@@ -1,0 +1,8 @@
+# ignore pycache
+*.pyc
+
+# ignore RAW data
+RAW_data/
+
+# ignore saved models
+saved_models/
