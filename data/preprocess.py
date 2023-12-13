@@ -1,16 +1,19 @@
 import pandas as pd
 import torch
-from utils.utils import get_device
+from utils import *
 
-DEVICE = get_device()
+DEVICE = utils.get_device()
 
 
 def get_data() -> (torch.tensor, torch.tensor, (list, list, str, list)):
 
-    RAW_data = pd.read_csv('data/compass_old.csv')
-    CAT=['sex','age_cat','race','c_charge_degree','decile_score.1','score_text','v_type_of_assessment','v_decile_score','v_score_text']
-    NUM=['age','juv_fel_count','juv_misd_count','juv_other_count','priors_count','days_b_screening_arrest','c_days_from_compas','end']
-    LABEL = 'is_recid'
+    # RAW_data = pd.read_csv('data/compass_old.csv')
+    # CAT=['sex','age_cat','race','c_charge_degree','decile_score.1','score_text','v_type_of_assessment','v_decile_score','v_score_text']
+    # NUM=['age','juv_fel_count','juv_misd_count','juv_other_count','priors_count','days_b_screening_arrest','c_days_from_compas','end']
+    # LABEL = 'is_recid'
+    RAW_data = pd.read_csv(utils.get_dataset_path())
+    CAT, NUM, LABEL = utils.get_dataset_attributes()
+    
     # convert categorical data to ordinal data
     from sklearn.preprocessing import OrdinalEncoder
     enc = OrdinalEncoder()

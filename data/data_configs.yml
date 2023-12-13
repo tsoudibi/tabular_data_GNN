@@ -1,0 +1,286 @@
+adult:
+  full_name: adult income 
+  file_path: data/adult.csv
+  task: classification
+  num_classes: 2
+  CAT: 
+    - workclass
+    - education
+    - marital-status
+    - occupation
+    - relationship
+    - race
+    - gender
+    - native-country
+  NUM: 
+    - age
+    - fnlwgt
+    - educational-num
+    - capital-gain
+    - capital-loss
+    - hours-per-week
+  TARGET: 
+    income
+
+compas:
+  full_name: compas-two-years
+  file_path: data/compas.csv
+  task: classification
+  num_classes: 2
+  CAT:
+    - sex
+    - age_cat_25-45
+    - age_cat_Greaterthan45
+    - age_cat_Lessthan25
+    - race_African-American
+    - race_Caucasian
+    - c_charge_degree_F
+    - c_charge_degree_M
+  NUM:
+    - age
+    - juv_misd_count
+    - priors_count
+  TARGET:
+    twoyearrecid
+
+compass_old:
+  full_name: compas-two-years-old
+  file_path: data/compass_old.csv
+  task: classification
+  num_classes: 2
+  CAT:
+    - sex
+    - age_cat
+    - race
+    - c_charge_degree
+    - decile_score.1
+    - score_text
+    - v_type_of_assessment
+    - v_decile_score
+    - v_score_text
+  NUM:
+    - age
+    - juv_fel_count
+    - juv_misd_count
+    - juv_other_count
+    - priors_count
+    - days_b_screening_arrest
+    - c_days_from_compas
+    - end
+  TARGET:
+    is_recid
+
+eye_movements_num:
+  full_name: eye_movements_num
+  file_path: data/eye_movements_num.csv
+  task: classification
+  num_classes: 2
+  CAT:
+  NUM:
+    - lineNo
+    - assgNo
+    - prevFixDur
+    - firstfixDur
+    - firstPassFixDur
+    - nextFixDur
+    - firstSaccLen
+    - lastSaccLen
+    - prevFixPos
+    - landingPos
+    - leavingPos
+    - totalFixDur
+    - meanFixDur
+    - regressLen
+    - regressDur
+    - pupilDiamMax
+    - pupilDiamLag
+    - timePrtctg
+    - titleNo
+    - wordNo
+  TARGET:
+    label
+ 
+
+eye_movements_cat:
+  full_name: eye_movements_cat
+  file_path: data/eye_movements_cat.csv
+  task: classification
+  num_classes: 2
+  CAT:
+    - P1stFixation
+    - P2stFixation
+    - nextWordRegress
+  NUM:
+    - lineNo
+    - assgNo
+    - prevFixDur
+    - firstfixDur
+    - firstPassFixDur
+    - nextFixDur
+    - firstSaccLen
+    - lastSaccLen
+    - prevFixPos
+    - landingPos
+    - leavingPos
+    - totalFixDur
+    - meanFixDur
+    - regressLen
+    - regressDur
+    - pupilDiamMax
+    - pupilDiamLag
+    - timePrtctg
+    - titleNo
+    - wordNo
+  TARGET:
+    label
+
+electricity_num:
+  full_name: electricity_num
+  file_path: data/electricity_num.csv
+  task: classification
+  num_classes: 2
+  CAT:
+  NUM:
+    - date
+    - period
+    - nswprice
+    - nswdemand
+    - vicprice
+    - vicdemand
+    - transfer
+  TARGET:
+    class
+
+
+houses_cat:
+  full_name: Brazilian_houses_cat
+  file_path: data/Brazilian_houses_cat.csv
+  task: regression
+  num_classes: None
+  CAT:
+    - city
+    - animal
+    - furniture
+  NUM:
+    - area
+    - rooms
+    - bathroom
+    - parking_spaces
+    - hoa_(BRL)
+    - rent_amount_(BRL)
+    - property_tax_(BRL)
+    - fire_insurance_(BRL)
+  TARGET:
+    total_(BRL)
+
+
+covertype_cat:
+  full_name: covertype_cat
+  file_path: data/covertype_cat.csv
+  task: classification
+  num_classes: 2
+  CAT:
+    - Wilderness_Area1
+    - Wilderness_Area2
+    - Wilderness_Area3
+    - Wilderness_Area4
+    - Soil_Type1
+    - Soil_Type2
+    - Soil_Type3
+    - Soil_Type4
+    - Soil_Type5
+    - Soil_Type6
+    - Soil_Type7
+    - Soil_Type8
+    - Soil_Type9
+    - Soil_Type10
+    - Soil_Type11
+    - Soil_Type12
+    - Soil_Type13
+    - Soil_Type14
+    - Soil_Type15
+    - Soil_Type16
+    - Soil_Type17
+    - Soil_Type18
+    - Soil_Type19
+    - Soil_Type20
+    - Soil_Type21
+    - Soil_Type22
+    - Soil_Type23
+    - Soil_Type24
+    - Soil_Type25
+    - Soil_Type26
+    - Soil_Type27
+    - Soil_Type28
+    - Soil_Type29
+    - Soil_Type30
+    - Soil_Type31
+    - Soil_Type32
+    - Soil_Type33
+    - Soil_Type34
+    - Soil_Type35
+    - Soil_Type36
+    - Soil_Type37
+    - Soil_Type38
+    - Soil_Type39
+    - Soil_Type40
+    - class
+  NUM:
+    - Elevation
+    - Aspect
+    - Slope
+    - Horizontal_Distance_To_Hydrology
+    - Vertical_Distance_To_Hydrology
+    - Horizontal_Distance_To_Roadways
+    - Hillshade_9am
+    - Hillshade_Noon
+    - Hillshade_3pm
+    - Horizontal_Distance_To_Fire_Points
+  TARGET:
+    class
+
+
+
+
+    
+electricity_cat:
+  full_name: electricity_cat
+  file_path: data/electricity_cat.csv
+  task: classification
+  num_classes: 2
+  CAT:
+    - day
+    - class
+  NUM:
+    - date
+    - period
+    - nswprice
+    - nswdemand
+    - vicprice
+    - vicdemand
+    - transfer
+  TARGET:
+    class
+
+
+credit:
+  full_name: credit
+  file_path: data/credit.csv
+  task: classification
+  num_classes: 2
+  CAT:
+    - SeriousDlqin2yrs
+  NUM:
+    - RevolvingUtilizationOfUnsecuredLines
+    - age
+    - NumberOfTime30-59DaysPastDueNotWorse
+    - DebtRatio
+    - MonthlyIncome
+    - NumberOfOpenCreditLinesAndLoans
+    - NumberOfTimes90DaysLate
+    - NumberRealEstateLoansOrLines
+    - NumberOfTime60-89DaysPastDueNotWorse
+    - NumberOfDependents
+  TARGET:
+    SeriousDlqin2yrs
+  uniform:
