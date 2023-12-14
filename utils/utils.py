@@ -66,6 +66,20 @@ def set_seed(seed):
     except Exception as e:
         print("[Pytorch]Set seed failed,details are:", e)
         pass
+    try:
+        from torch_geometric import seed_everything
+        seed_everything(seed)
+        print("[Pytorch Geometric] Seed set successfully")
+    except Exception as e:
+        print("[Pytorch Geometric]Set seed failed,details are:", e)
+        pass
+    try:
+        import sklearn
+        sklearn.utils.check_random_state(seed)
+        print("[Sklearn] Seed set successfully")
+    except Exception as e:
+        print("[Sklearn]Set seed failed,details are:", e)
+        pass
     import numpy as np
     np.random.seed(seed)
     import random as python_random

@@ -20,13 +20,13 @@ class K_graph(torch.nn.Module):
         label_cols: number of label columns
         cat_num: number of unique value of each categorical columns
         '''
-        self.hidden_dim = 128
+        self.hidden_dim = get_run_config()['hidden_dim']
         # order: num -> cat -> label
         self.num_cols = len(NUM)
         self.cat_cols = len(CAT)
         self.label_cols = len(LABEL)
         self.number_of_columns = self.num_cols + self.cat_cols 
-        self.K = round(self.number_of_columns*0.5)
+        self.K = round(self.number_of_columns*get_run_config()['K_ratio'])
         
         # numerical feature
         self.num_embeddings = torch.nn.ModuleList([torch.nn.Linear(1, self.hidden_dim) for i in range(self.num_cols)])
@@ -155,9 +155,7 @@ class K_graph(torch.nn.Module):
         
         processed_data = torch.cat(processed_data, dim=0) 
         processed_indices = torch.cat(processed_indices, dim=0)
-        # print(processed_indices)
-        # print(processed_indices.argsort())
-        # print(processed_indices[processed_indices.argsort()])
+
         processed_data = processed_data[processed_indices.argsort()] # ???????
         processed_data = torch.split(processed_data, self.K) # ?????????
         processed_data = torch.stack(list(processed_data), dim=0) # ???????????

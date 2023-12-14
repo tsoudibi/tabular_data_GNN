@@ -3,9 +3,9 @@ run_config:
   device: cuda
   dataset: compass_old
   metric: ACC
-  max_epoch: 200
+  max_epoch: 50
   learning_rate: 0.001
-  batch_size: 1024
+  batch_size: 1000
   train_ratio: 0.7
   validation_ratio: 0.1
   K_ratio: 0.3
@@ -15,6 +15,6 @@ wandb_config:
   use_wandb: True
   entity: a220284268
   project: TabularGNN
-  name : test
+  name : test seed
   group: test
   notes: V0

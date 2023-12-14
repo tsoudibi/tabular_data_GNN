@@ -6,3 +6,6 @@ RAW_data/
 
 # ignore saved models
 saved_models/
+
+# ignore wandb
+wandb/

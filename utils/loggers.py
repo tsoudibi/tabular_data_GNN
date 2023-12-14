@@ -1,4 +1,4 @@
-
+from utils.utils import *
 class feature_improtance_extractor():
     '''
     feature_importance_extractor
@@ -32,14 +32,22 @@ class wandb_logger():
     '''
     wandb_logger
     '''
-    def __init__(self, project_name, run_name, config):
+    def __init__(self, wandb_config: dict):
         import wandb
-        wandb.init(project=project_name, name=run_name, config=config)
+        import os
+        os.environ["WANDB_SILENT"] = "true"
+        wandb.init( project = wandb_config['project'], 
+                    name = wandb_config['name'],
+                    notes = wandb_config['notes'],
+                    entity = wandb_config['entity'],
+                    group = wandb_config['group'],
+                    # track hyperparameters and run metadata
+                    config = dict(get_run_config(), **wandb_config))
         self.wandb = wandb
         self.iter = 0
         return
     
-    def log(self, package):
+    def log(self, package: dict):
         self.wandb.log(package, step=self.iter)
         self.iter += 1
         return
@@ -54,3 +62,12 @@ class wandb_logger():
     def reset(self):
         self.iter = 0
         return
+    
+logger = None
+def get_logger():
+    return logger
+
+def set_logger(new_logger) -> (None):
+    global logger
+    logger = new_logger
+    return

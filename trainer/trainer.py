@@ -6,6 +6,8 @@ from tqdm import trange
 from torcheval.metrics import MulticlassAccuracy
 from torcheval.metrics import BinaryAUROC
 
+
+
 def test_run():
     x, y, (NUM, CAT, LABEL, cat_num) = get_data()
     the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
@@ -80,8 +82,13 @@ def train_one_epoch(model, optimizer, datas, batch_size, epoch):
                     valid_acc.update(torch.argmax(preds,1),true.T[1])
                     valid_auc.update(preds.T[0],true.T[0])
                 stepper.set_postfix({'loss': round(batch_loss/(i+1), 3), 'acc': round(train_acc.item(), 3), 'AUC': round(train_auc.item(), 3), 'val_acc': round(valid_acc.compute().item(), 3), 'val_AUC': round(valid_auc.compute().item(), 3)})
+                if get_wandb_config()['use_wandb']:
+                    get_logger().log({'loss': round(batch_loss/(i+1), 3), 'acc': round(train_acc.item(), 3), 'AUC': round(train_auc.item(), 3), 'val_acc': round(valid_acc.compute().item(), 3), 'val_AUC': round(valid_auc.compute().item(), 3)})
 
 def train_one_run(configs):
+    if get_wandb_config()['use_wandb']:
+        set_logger(wandb_logger(get_wandb_config()))
+    
     # load configs hyperparameter
     max_epoch = configs['max_epoch']
     learning_rate = configs['learning_rate']
@@ -130,3 +137,6 @@ def train_one_run(configs):
         print('test_acc:', test_acc.compute().item())
         print('test_auc:', test_auc.compute().item())
         print('-----------------------------------------')
+        if get_wandb_config()['use_wandb']:
+            get_logger().log({'test_acc': test_acc.compute().item(), 'test_auc': test_auc.compute().item()})
+            get_logger().finish()
