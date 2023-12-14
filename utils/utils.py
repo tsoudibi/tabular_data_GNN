@@ -9,7 +9,7 @@ def get_device() -> (str):
 
 
 '''
-data config loader
+dataset config loader
 '''
 import yaml 
 DATA_CONFIG = {}
@@ -74,3 +74,23 @@ def set_seed(seed):
     import os
     os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+    
+
+'''
+run config loader
+'''
+import yaml 
+RUN_CONFIG = {}
+# initialize 
+def load_config_file():
+    with open('./trainer/config.yaml', 'r') as stream:
+        global RUN_CONFIG
+        RUN_CONFIG = yaml.load(stream, Loader=yaml.Loader)
+        select_dataset(RUN_CONFIG['run_config']['dataset'])
+        set_seed(RUN_CONFIG['run_config']['random_state'])
+        print('=================[run config is loaded]=================')
+load_config_file()
+def get_run_config() -> (dict):
+    return RUN_CONFIG['run_config']
+def get_wandb_config() -> (dict):
+    return RUN_CONFIG['wandb_config']
