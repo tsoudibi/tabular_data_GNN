@@ -15,6 +15,6 @@ wandb_config:
   use_wandb: True
   entity: a220284268
   project: TabularGNN
-  name : test seed
-  group: test
+  name : test k_fold
+  group: test k_fold
   notes: V0

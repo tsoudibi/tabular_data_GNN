@@ -19,7 +19,7 @@ def get_data() -> (torch.tensor, torch.tensor, (list, list, str, list)):
     enc = OrdinalEncoder()
     data_pd = RAW_data.copy()
     data_pd[CAT] = enc.fit_transform(RAW_data[CAT])
-    # data_pd = pd.get_dummies(RAW_data, columns=CAT, dtype=float)
+    
     # label to category
     data_pd[LABEL] = data_pd[LABEL].astype('category').cat.codes
 

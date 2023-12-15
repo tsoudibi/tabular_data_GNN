@@ -60,7 +60,7 @@ def set_seed(seed):
         torch.manual_seed(seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)
-            # torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
         print("[Pytorch] Seed set successfully")
     except Exception as e:
@@ -82,12 +82,13 @@ def set_seed(seed):
         pass
     import numpy as np
     np.random.seed(seed)
-    import random as python_random
-    python_random.seed(seed)
+    import random 
+    random.seed(seed)
     # cuda env
     import os
     os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+    os.environ['PYTHONHASHSEED'] = str(seed) 
     
 
 '''

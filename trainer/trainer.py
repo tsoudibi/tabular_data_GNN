@@ -5,8 +5,7 @@ from data.preprocess import *
 from tqdm import trange
 from torcheval.metrics import MulticlassAccuracy
 from torcheval.metrics import BinaryAUROC
-
-
+from sklearn.model_selection import KFold
 
 def test_run():
     x, y, (NUM, CAT, LABEL, cat_num) = get_data()
@@ -29,7 +28,8 @@ def test_run():
         # print(((the_model.feature_importance_learners.grad).abs().max(dim=1)[0]))
         optimizer.step()
         
-        print('-----------------------------------------')
+        print('epoch',i,'-----------------------------------------')
+    print('done')
         
 
 def train_one_epoch(model, optimizer, datas, batch_size, epoch):
@@ -85,7 +85,7 @@ def train_one_epoch(model, optimizer, datas, batch_size, epoch):
                 if get_wandb_config()['use_wandb']:
                     get_logger().log({'loss': round(batch_loss/(i+1), 3), 'acc': round(train_acc.item(), 3), 'AUC': round(train_auc.item(), 3), 'val_acc': round(valid_acc.compute().item(), 3), 'val_AUC': round(valid_auc.compute().item(), 3)})
 
-def train_one_run(configs):
+def train_one_run_(configs):
     if get_wandb_config()['use_wandb']:
         set_logger(wandb_logger(get_wandb_config()))
     
@@ -109,6 +109,13 @@ def train_one_run(configs):
     validation_label = y[int(len(x)*train_ratio):int(len(x)*(train_ratio+validation_ratio))]
     test_data = x[int(len(x)*(train_ratio+validation_ratio)):]
     test_label = y[int(len(x)*(train_ratio+validation_ratio)):]
+    print('train_data:', (train_data).shape)
+    print('train_label:', (train_label).shape)
+    print('validation_data:', (validation_data).shape)
+    print('validation_label:', (validation_label).shape)
+    print('test_data:', (test_data).shape)
+    print('test_label:', (test_label).shape)
+    print('-----------------------------------------')  
 
     # build model and optimizer
     the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
@@ -140,3 +147,80 @@ def train_one_run(configs):
         if get_wandb_config()['use_wandb']:
             get_logger().log({'test_acc': test_acc.compute().item(), 'test_auc': test_auc.compute().item()})
             get_logger().finish()
+
+def train_one_run(configs, data_package = None):
+    if get_wandb_config()['use_wandb']:
+        set_logger(wandb_logger(get_wandb_config()))
+    
+    # load configs hyperparameter
+    max_epoch = configs['max_epoch']
+    learning_rate = configs['learning_rate']
+    batch_size = configs['batch_size']
+    
+    
+    (train_data, train_label, validation_data, validation_label, test_data, test_label, NUM, CAT, LABEL, cat_num)  = data_package
+
+    # build model and optimizer
+    the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
+    optimizer = torch.optim.SGD(the_model.parameters(), lr = learning_rate)
+    
+    # train the model
+    datas = (train_data, train_label, validation_data, validation_label)
+    for i in range(max_epoch):
+        train_one_epoch(the_model, optimizer, datas, batch_size, epoch=i+1)
+        # print(extractor.get())
+        extractor.reset()
+    
+    # test the model
+    with torch.no_grad():
+        test_data = torch.split(test_data, batch_size)
+        test_label = torch.split(test_label, batch_size)
+        for i in range(len(test_data)):
+            output = the_model(test_data[i], epoch=200)
+            preds = output.softmax(dim=1)
+            true = torch.nn.functional.one_hot(test_label[i], num_classes=2).to(DEVICE)
+            test_acc = MulticlassAccuracy(num_classes=2).to(DEVICE)
+            test_auc = BinaryAUROC().to(DEVICE)
+            test_acc.update(torch.argmax(preds,1),true.T[1])
+            test_auc.update(preds.T[0],true.T[0])
+
+        print('test_acc:', test_acc.compute().item())
+        print('test_auc:', test_auc.compute().item())
+        print('-----------------------------------------')
+        if get_wandb_config()['use_wandb']:
+            get_logger().log({'test_acc': test_acc.compute().item(), 'test_auc': test_auc.compute().item()})
+            get_logger().finish()
+            
+            
+def train_K_fold(config: dict):
+    '''
+    run K fold cross validation
+    input: 
+        config: dict
+    '''
+    # prepare K fold data
+    kf = KFold(n_splits=5, shuffle=True)
+    
+    x, y, (NUM, CAT, LABEL, cat_num) = get_data()
+    
+    for index, (train_index, test_index) in enumerate(kf.split(x)):
+        print('=================[', index+1,'Fold ]=================')
+        train_data, train_label = x[train_index], y[train_index]
+        test_data, test_label = x[test_index], y[test_index]
+        
+        train_ratio = 1 - config['validation_ratio']
+        train_indices, val_indeices = torch.randperm(len(train_data))[:int(len(train_data)*train_ratio)], torch.randperm(len(train_data))[int(len(train_data)*train_ratio):]
+        validation_data, validation_label = train_data[val_indeices], train_label[val_indeices]
+        train_data, train_label = train_data[train_indices], train_label[train_indices]
+        
+        print('train_data:', (train_data).shape)
+        print('train_label:', (train_label).shape)
+        print('validation_data:', (validation_data).shape)
+        print('validation_label:', (validation_label).shape)
+        print('test_data:', (test_data).shape)
+        print('test_label:', (test_label).shape)
+        print('-----------------------------------------')  
+        
+        data_package = (train_data, train_label, validation_data, validation_label, test_data, test_label, NUM, CAT, LABEL, cat_num)
+        train_one_run(config, data_package)
+    print('==================[done]==================')
