@@ -160,6 +160,10 @@ def train_one_run(configs, data_package = None):
     
     (train_data, train_label, validation_data, validation_label, test_data, test_label, NUM, CAT, LABEL, cat_num)  = data_package
 
+    # test_data = validation_data.clone().detach()
+    # test_label = validation_label.clone().detach()
+    
+    
     # build model and optimizer
     the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
     optimizer = torch.optim.SGD(the_model.parameters(), lr = learning_rate)
@@ -204,6 +208,7 @@ def train_K_fold(config: dict):
     x, y, (NUM, CAT, LABEL, cat_num) = get_data()
     
     for index, (train_index, test_index) in enumerate(kf.split(x)):
+        print(len(train_index), len(test_index))
         print('=================[', index+1,'Fold ]=================')
         train_data, train_label = x[train_index], y[train_index]
         test_data, test_label = x[test_index], y[test_index]
@@ -212,6 +217,9 @@ def train_K_fold(config: dict):
         train_indices, val_indeices = torch.randperm(len(train_data))[:int(len(train_data)*train_ratio)], torch.randperm(len(train_data))[int(len(train_data)*train_ratio):]
         validation_data, validation_label = train_data[val_indeices], train_label[val_indeices]
         train_data, train_label = train_data[train_indices], train_label[train_indices]
+        
+        test_indices = torch.randperm(len(test_data))
+        test_data, test_label = test_data[test_indices], test_label[test_indices]
         
         print('train_data:', (train_data).shape)
         print('train_label:', (train_label).shape)
@@ -224,3 +232,4 @@ def train_K_fold(config: dict):
         data_package = (train_data, train_label, validation_data, validation_label, test_data, test_label, NUM, CAT, LABEL, cat_num)
         train_one_run(config, data_package)
     print('==================[done]==================')
+    
