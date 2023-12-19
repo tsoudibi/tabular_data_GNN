@@ -12,14 +12,14 @@ def get_data() -> (torch.tensor, torch.tensor, (list, list, str, list)):
     # NUM=['age','juv_fel_count','juv_misd_count','juv_other_count','priors_count','days_b_screening_arrest','c_days_from_compas','end']
     # LABEL = 'is_recid'
     RAW_data = pd.read_csv(utils.get_dataset_path())
-    CAT, NUM, LABEL = utils.get_dataset_attributes()
+    NUM, CAT, LABEL = utils.get_dataset_attributes()
     
     # convert categorical data to ordinal data
     from sklearn.preprocessing import OrdinalEncoder
     enc = OrdinalEncoder()
     data_pd = RAW_data.copy()
     data_pd[CAT] = enc.fit_transform(RAW_data[CAT])
-    
+    # data_pd = pd.get_dummies(RAW_data, columns=CAT, dtype=float)
     # label to category
     data_pd[LABEL] = data_pd[LABEL].astype('category').cat.codes
 

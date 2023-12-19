@@ -125,6 +125,7 @@ def gather_data_package() ->(tuple):
 
 def train_one_run(configs, data_package = None):
     '''
+    validation會和train一起上去，應該有寫錯
     run one run of training, including train, validation and test\n
     Noted: if data_package is None, will automatically generate data_package from configs (shouldn't be used when using K fold cross validation)
     inputs:
@@ -141,8 +142,7 @@ def train_one_run(configs, data_package = None):
     
     if data_package == None:
         data_package = gather_data_package()
-    else:
-        (train_data, train_label, validation_data, validation_label, test_data, test_label, NUM, CAT, LABEL, cat_num)  = data_package
+    train_data, train_label, validation_data, validation_label, test_data, test_label, NUM, CAT, LABEL, cat_num  = data_package
     
     # build model and optimizer
     the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
@@ -192,9 +192,10 @@ def train_K_fold(config: dict):
         # split train and test data
         train_data, train_label = x[train_index], y[train_index]
         test_data, test_label = x[test_index], y[test_index]
-        # split validation data from train data
+        # shuffle and split validation data from train data
         train_ratio = 1 - config['validation_ratio']
-        train_indices, val_indeices = torch.randperm(len(train_data))[:int(len(train_data)*train_ratio)], torch.randperm(len(train_data))[int(len(train_data)*train_ratio):]
+        indices = torch.randperm(len(train_data))
+        val_indeices, train_indices = indices[:int(len(train_data)*(config['validation_ratio']))], indices[int(len(train_data)*(config['validation_ratio'])):]
         validation_data, validation_label = train_data[val_indeices], train_label[val_indeices]
         train_data, train_label = train_data[train_indices], train_label[train_indices]
         # shuffle test
