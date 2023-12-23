@@ -1,6 +1,7 @@
 from utils.utils import *
 from utils.loggers import *
 from model.model import *
+from model.baseline import *
 from data.preprocess import *
 from tqdm import trange
 from torcheval.metrics import MulticlassAccuracy
@@ -87,7 +88,7 @@ def train_one_epoch(model, optimizer, datas, batch_size, epoch):
         
             with torch.no_grad():
                 for i in range(len(validation_data)):
-                    output = model(validation_data[i], epoch=200)
+                    output = model(validation_data[i], epoch=-1)
                     # loss = torch.nn.functional.cross_entropy(output, validation_label[i])
                     preds = output.softmax(dim=1)
                     true = torch.nn.functional.one_hot(validation_label[i], num_classes=2).to(DEVICE)
@@ -146,13 +147,14 @@ def train_one_run(configs, data_package = None):
     
     # build model and optimizer
     the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
+    # the_model = MLP(NUM, CAT, [LABEL], cat_num).to(DEVICE)
     optimizer = torch.optim.SGD(the_model.parameters(), lr = learning_rate)
     
     # train the model
     datas = (train_data, train_label, validation_data, validation_label)
     for i in range(max_epoch):
         train_one_epoch(the_model, optimizer, datas, batch_size, epoch=i+1)
-        # print(extractor.get())
+        print(extractor.get())
         extractor.reset()
     
     # test the model
@@ -160,7 +162,7 @@ def train_one_run(configs, data_package = None):
         test_data = torch.split(test_data, batch_size)
         test_label = torch.split(test_label, batch_size)
         for i in range(len(test_data)):
-            output = the_model(test_data[i], epoch=200)
+            output = the_model(test_data[i], epoch=-1)
             preds = output.softmax(dim=1)
             true = torch.nn.functional.one_hot(test_label[i], num_classes=2).to(DEVICE)
             test_acc = MulticlassAccuracy(num_classes=2).to(DEVICE)

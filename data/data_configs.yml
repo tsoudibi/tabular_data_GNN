@@ -250,7 +250,6 @@ electricity_cat:
   num_classes: 2
   CAT:
     - day
-    - class
   NUM:
     - date
     - period
