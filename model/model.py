@@ -41,15 +41,22 @@ class K_graph(torch.nn.Module):
         )
         
         # feature importance learning
-        self.feature_importance_learner = torch.nn.Sequential(
+        # self.feature_importance_learner = torch.nn.Sequential(
+        #     torch.nn.Linear(self.hidden_dim, self.hidden_dim),
+        #     torch.nn.ReLU(),
+        #     torch.nn.LayerNorm(self.hidden_dim),
+        #     torch.nn.Dropout(p=0.5),
+        #     torch.nn.Linear(self.hidden_dim, 1),
+        # ) 
+        # self.feature_importance_learners = torch.nn.ModuleList([self.feature_importance_learner for i in range(self.number_of_columns)])
+
+        self.feature_importance_learners = torch.nn.Sequential(
             torch.nn.Linear(self.hidden_dim, self.hidden_dim),
             torch.nn.ReLU(),
             torch.nn.LayerNorm(self.hidden_dim),
             torch.nn.Dropout(p=0.5),
             torch.nn.Linear(self.hidden_dim, 1),
         ) 
-        self.feature_importance_learners = torch.nn.ModuleList([self.feature_importance_learner for i in range(self.number_of_columns)])
-
         
         # graph convolution layers
         self.conv_GCN_input = torch_geometric.nn.GCNConv(self.number_of_columns*self.hidden_dim, self.hidden_dim)
@@ -74,8 +81,8 @@ class K_graph(torch.nn.Module):
         # feature_embedding = feature_embedding.reshape((len(input_data), self.number_of_columns, -1)) # [batch_size, (num_cols + cat_cols), hidden_dim]
         
         # feature importance learning
-        # feature_importance = torch.cat([self.feature_importance_learners(feature_embedding[:,i*self.hidden_dim:(i+1)*self.hidden_dim]) for i in range(self.number_of_columns)], dim=1) # [batch_size, num_cols + cat_cols, 1]
-        feature_importance = torch.cat([self.feature_importance_learners[i](feature_embedding[:,i*self.hidden_dim:(i+1)*self.hidden_dim]) for i in range(self.number_of_columns)], dim=1) # [batch_size, num_cols + cat_cols, 1]
+        feature_importance = torch.cat([self.feature_importance_learners(feature_embedding[:,i*self.hidden_dim:(i+1)*self.hidden_dim]) for i in range(self.number_of_columns)], dim=1) # [batch_size, num_cols + cat_cols, 1]
+        # feature_importance = torch.cat([self.feature_importance_learners[i](feature_embedding[:,i*self.hidden_dim:(i+1)*self.hidden_dim]) for i in range(self.number_of_columns)], dim=1) # [batch_size, num_cols + cat_cols, 1]
         # print(feature_importance)
         feature_importance = torch.layer_norm(feature_importance, feature_importance.shape)
         # feature_importance = torch.softmax(feature_importance, dim=1) # [batch_size, num_cols + cat_cols, 1]

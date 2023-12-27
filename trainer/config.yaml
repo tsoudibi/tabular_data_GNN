@@ -1,15 +1,14 @@
 # default config
 run_config:
   device: cuda
-  dataset: adult
+  dataset: compass_old
   metric: ACC
-  max_epoch: 50
+  max_epoch: 5
   learning_rate: 0.001
-  batch_size: 125
+  batch_size: 1000
   train_ratio: 0.7
   validation_ratio: 0.1
   K_ratio: 0.3
-
   hidden_dim: 128
   random_state: 42
 wandb_config:
@@ -17,5 +16,5 @@ wandb_config:
   entity: a220284268
   project: TabularGNN
   name : k_fold
-  group: b=125
+  group: seed test 1
   notes: V1 

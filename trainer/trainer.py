@@ -12,6 +12,7 @@ def test_run():
     '''
     run a test run of training, check if the model can be trained
     '''
+    set_seed(get_run_config()['random_state'])
     x, y, (NUM, CAT, LABEL, cat_num) = get_data()
     the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
     optimizer = torch.optim.SGD(the_model.parameters(), lr=0.001)
@@ -29,7 +30,7 @@ def test_run():
         output = the_model(train_data[:data_count], epoch=200)
         loss = torch.nn.functional.cross_entropy(output, train_label[:data_count])
         loss.backward()
-        # print(((the_model.feature_importance_learners.grad).abs().max(dim=1)[0]))
+        print(((the_model.feature_importance_learners[-1].weight.grad).abs().max(dim=1)[0]))
         optimizer.step()
         
         print('epoch',i,'-----------------------------------------')
@@ -126,7 +127,6 @@ def gather_data_package() ->(tuple):
 
 def train_one_run(configs, data_package = None):
     '''
-    validation會和train一起上去，應該有寫錯
     run one run of training, including train, validation and test\n
     Noted: if data_package is None, will automatically generate data_package from configs (shouldn't be used when using K fold cross validation)
     inputs:
@@ -184,6 +184,7 @@ def train_K_fold(config: dict):
     input: 
         - config: dict, run config of this run, use get_run_config() to get it
     '''
+    set_seed(get_run_config()['random_state'])
     # prepare K fold data
     kf = KFold(n_splits=5, shuffle=True)
     
