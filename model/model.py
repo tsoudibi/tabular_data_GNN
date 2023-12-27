@@ -128,8 +128,8 @@ class K_graph(torch.nn.Module):
             edge_wight = torch.softmax(edge_wight, dim=0)
 
             
-            if True and epoch % 10 == 0:
-                print('in graph', target_col, 'nodes:', len(indices), 'edges:', len(edge_wight),'ratio', len(edge_wight)/(len(indices)**2+0.000001))
+            # if True and epoch % 10 == 0:
+            #     print('in graph', target_col, 'nodes:', len(indices), 'edges:', len(edge_wight),'ratio', len(edge_wight)/(len(indices)**2+0.000001))
             
             # print(edge_wight)
             # importance_topK_current[:,target_col] = tmp # [????, cols]
