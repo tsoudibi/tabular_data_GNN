@@ -147,6 +147,7 @@ def train_one_run(configs, data_package = None):
     
     # build model and optimizer
     the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
+    # the_model = K_graph_Multi(NUM, CAT, [LABEL], cat_num).to(DEVICE)
     # the_model = MLP(NUM, CAT, [LABEL], cat_num).to(DEVICE)
     optimizer = torch.optim.SGD(the_model.parameters(), lr = learning_rate)
     
@@ -186,7 +187,7 @@ def train_K_fold(config: dict):
     '''
     set_seed(get_run_config()['random_state'])
     # prepare K fold data
-    kf = KFold(n_splits=5, shuffle=True)
+    kf = KFold(n_splits=3, shuffle=True)
     
     x, y, (NUM, CAT, LABEL, cat_num) = get_data()
     
