@@ -14,7 +14,8 @@ def test_run():
     '''
     set_seed(get_run_config()['random_state'])
     x, y, (NUM, CAT, LABEL, cat_num) = get_data()
-    the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
+    # the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
+    the_model = K_graph_Multi(NUM, CAT, [LABEL], cat_num).to(DEVICE)
     optimizer = torch.optim.SGD(the_model.parameters(), lr=0.001)
 
     # optimizer.step()
@@ -146,8 +147,8 @@ def train_one_run(configs, data_package = None):
     train_data, train_label, validation_data, validation_label, test_data, test_label, NUM, CAT, LABEL, cat_num  = data_package
     
     # build model and optimizer
-    the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
-    # the_model = K_graph_Multi(NUM, CAT, [LABEL], cat_num).to(DEVICE)
+    # the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
+    the_model = K_graph_Multi(NUM, CAT, [LABEL], cat_num).to(DEVICE)
     # the_model = MLP(NUM, CAT, [LABEL], cat_num).to(DEVICE)
     optimizer = torch.optim.SGD(the_model.parameters(), lr = learning_rate)
     

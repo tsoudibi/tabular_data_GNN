@@ -39,7 +39,6 @@ class K_graph(torch.nn.Module):
             torch.nn.LayerNorm(self.hidden_dim),
             torch.nn.Linear(self.hidden_dim, self.label_cols + 1)
         )
-        
         # feature importance learning
         # def create_feature_importance_learner():
         #     return torch.nn.Sequential(
@@ -60,8 +59,8 @@ class K_graph(torch.nn.Module):
         ) 
         
         # graph convolution layers
-        # self.conv_GCN_input = torch_geometric.nn.GCNConv(self.number_of_columns*self.hidden_dim, self.hidden_dim)
-        self.conv_GCN_input = torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim)
+        self.conv_GCN_input = torch_geometric.nn.GCNConv(self.number_of_columns*self.hidden_dim, self.hidden_dim)
+        # self.conv_GCN_input = torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim)
         # self.conv_1_input = torch_geometric.nn.GATConv(self.number_of_columns*self.hidden_dim, self.hidden_dim)
         self.conv_GCN_2 = torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim)
         
@@ -142,8 +141,8 @@ class K_graph(torch.nn.Module):
             # print(edge_wight)
             # importance_topK_current[:,target_col] = tmp # [????, cols]
             
-            # features = (feature_embedding[indices]) # [????, cols*hidden_dim]
-            features = (feature_embedding.reshape(len(input_data),self.number_of_columns,-1)[indices][:,target_col,:]) # [????, hidden_dim]
+            features = (feature_embedding[indices]) # [????, cols*hidden_dim]
+            # features = (feature_embedding.reshape(len(input_data),self.number_of_columns,-1)[indices][:,target_col,:]) # [????, hidden_dim]
             # print(features.shape)
 
             # construct graph 
@@ -156,10 +155,10 @@ class K_graph(torch.nn.Module):
             # x = self.conv_1_input(data.x, data.edge_index)  # [???, hidden_dim]
             x = torch.relu(x)
             x = torch.layer_norm(x, x.shape) # [???, hidden_dim]
-            x = torch.nn.Dropout(p=0.5)(x)
-            x = self.conv_GCN_2(x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
-            x = torch.relu(x)
-            x = torch.layer_norm(x, x.shape)
+            # x = torch.nn.Dropout(p=0.5)(x)
+            # x = self.conv_GCN_2(x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
+            # x = torch.relu(x)
+            # x = torch.layer_norm(x, x.shape)
 
             processed_data.append(x)
             processed_indices.append(indices)
@@ -167,13 +166,13 @@ class K_graph(torch.nn.Module):
         processed_data = torch.cat(processed_data, dim=0) 
         processed_indices = torch.cat(processed_indices, dim=0)
 
-        processed_data = processed_data[processed_indices.argsort()] # ???????
-        processed_data = torch.split(processed_data, self.K) # ?????????
-        processed_data = torch.stack(list(processed_data), dim=0) # ???????????
-        # processed_data = torch.sum(list(processed_data), dim=0) # ???????????
+        processed_data = processed_data[processed_indices.argsort()] # [batch*k, hidden_dim]
+        processed_data = torch.split(processed_data, self.K) # (batch, k, hidden_dim)
+        processed_data = torch.stack(list(processed_data), dim=0) # [batch, k, hidden_dim]
+        # processed_data = torch.sum((processed_data), dim=1) # [batch, hidden_dim]
 
         # cat residual
-        processed_data = torch.cat((processed_data, feature_embedding.reshape((len(input_data),self.number_of_columns,-1))), dim=1) # [batch_size, K+cols , hidden_dim]
+        processed_data = torch.cat((processed_data, feature_embedding.reshape((len(input_data),self.number_of_columns,-1))), dim=1) # [batch_size, K+1 , hidden_dim]
         
         # make prediction
         prediction = self.prediction(processed_data.reshape(processed_data.shape[0],-1))
@@ -219,7 +218,7 @@ class K_graph_Multi(torch.nn.Module):
             torch.nn.LayerNorm(self.hidden_dim),
             torch.nn.Dropout(p=0.5),
             torch.nn.Linear(self.hidden_dim, 1),
-        )  for i in range(4)])
+        )  for i in range(64)])
         
         # graph convolution layers
         # self.conv_GCN_input = torch_geometric.nn.GCNConv(self.number_of_columns*self.hidden_dim, self.hidden_dim)
@@ -228,6 +227,12 @@ class K_graph_Multi(torch.nn.Module):
         self.conv_GCN_2 = torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim)
         
         # self.transform = torch.nn.Linear(self.number_of_columns*self.hidden_dim, self.hidden_dim)
+        
+        self.weight_feature_importance = torch.nn.Sequential(
+            torch.nn.Linear(self.number_of_columns*64, 64),
+            torch.nn.ReLU(),
+            torch.nn.LayerNorm(64),
+        )
         
     def forward(self, input_data, epoch = -1):
         
@@ -243,97 +248,106 @@ class K_graph_Multi(torch.nn.Module):
         feature_embedding = torch.cat((feature_embedding_num, feature_embedding_cat), dim=1) # [batch_size, (num_cols + cat_cols) * hidden_dim]
         del feature_embedding_num, feature_embedding_cat, num_data
         
-        predictions = []
-        for learner_index in range(4):
-            # feature importance learning
-            feature_importance = torch.cat([self.feature_importance_learners[learner_index](feature_embedding[:,i*self.hidden_dim:(i+1)*self.hidden_dim]) for i in range(self.number_of_columns)], dim=1) # [batch_size, num_cols + cat_cols, 1]
-            feature_importance = torch.layer_norm(feature_importance, feature_importance.shape)
-            
-            # weighted feature embedding 
-            feature_embedding = feature_embedding.reshape((len(input_data),self.number_of_columns, -1)) * feature_importance.unsqueeze(-1) # [batch_size, (num_cols + cat_cols) * hidden_dim]
-            feature_embedding = feature_embedding.reshape((len(input_data), -1)) # [batch_size, (num_cols + cat_cols) * hidden_dim]
-            
-            # top K feature importance
-            K = self.K
-            value, indices = torch.topk(feature_importance, K) # (value: [batch_size, k], indices: [batch_size, k])
-            mask = torch.zeros_like(feature_importance, device=DEVICE)
-            mask.scatter_(1, indices, 1)
-            importance_topK = torch.where(mask > 0, feature_importance, torch.empty(feature_importance.shape,device=DEVICE).fill_(-1e9)) # [batch_size, cols]
-            importance_topK = torch.softmax(importance_topK, dim=1) # [batch_size, cols]
-            
-            extractor.update(feature_importance.sum(dim=0)/len(input_data))
-            del mask, feature_importance, value, indices
-            
-            
-            processed_data = []
-            processed_indices = []
-            for target_col in range(self.number_of_columns):
-                importance_topK_current = importance_topK.clone()# [batch_size, cols] 
-                indices = importance_topK_current.T[target_col].nonzero().T[0] # selected samples' indices  
-                
-                if indices.shape[0] == 0:
-                    continue
-                
-                importance_topK_current = importance_topK_current[importance_topK_current.T[target_col]>0]# [????, cols]
-                
-                # for target column, set its importance to 0. so that it will not be fully connected graph
-                # copy target column
-                tmp = torch.clone(importance_topK_current[:,target_col]) # [????], save for future weighted sum
-                importance_topK_current[:,target_col] = 0 # [????, cols]
-                # multiply to get weighted adj
-                weighted_adj = torch.matmul(importance_topK_current, importance_topK_current.T) # [batch_size, cols] * [cols, batch_size] = [batch_size, batch_size]
-                # prune the diagonal
-                weighted_adj = weighted_adj - torch.diag(weighted_adj.diagonal())
-
-                # construct graph
-                edge_index = weighted_adj.nonzero().T  # [2, num_edges]
-                edge_wight = weighted_adj[edge_index[0], edge_index[1]] # [num_edges]
-                edge_wight = torch.softmax(edge_wight, dim=0)
-
-                
-                # if True and epoch % 10 == 0:
-                #     print('in graph', target_col, 'nodes:', len(indices), 'edges:', len(edge_wight),'ratio', len(edge_wight)/(len(indices)**2+0.000001))
-                
-                
-                # features = (feature_embedding[indices]) # [????, cols*hidden_dim]
-                features = (feature_embedding.reshape(len(input_data),self.number_of_columns,-1)[indices][:,target_col,:]) # [????, hidden_dim]
-
-                # construct graph 
-                data = Data(x=features, edge_index=edge_index, edge_weight=edge_wight, indices=indices) 
-                
-                del features, edge_index, edge_wight, weighted_adj, importance_topK_current, tmp
-                
-                # apply GCN
-                x = self.conv_GCN_input(data.x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
-                # x = self.conv_1_input(data.x, data.edge_index)  # [???, hidden_dim]
-                x = torch.relu(x)
-                x = torch.layer_norm(x, x.shape) # [???, hidden_dim]
-                x = torch.nn.Dropout(p=0.5)(x)
-                x = self.conv_GCN_2(x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
-                x = torch.relu(x)
-                x = torch.layer_norm(x, x.shape)
-
-                processed_data.append(x)
-                processed_indices.append(indices)
-            
-            processed_data = torch.cat(processed_data, dim=0) 
-            processed_indices = torch.cat(processed_indices, dim=0)
-
-            processed_data = processed_data[processed_indices.argsort()] # ???????
-            processed_data = torch.split(processed_data, self.K) # ?????????
-            processed_data = torch.stack(list(processed_data), dim=0) # ???????????
-            # processed_data = torch.sum(list(processed_data), dim=0) # ???????????
-
-            # cat residual
-            processed_data = torch.cat((processed_data, feature_embedding.reshape((len(input_data),self.number_of_columns,-1))), dim=1) # [batch_size, K+cols , hidden_dim]
-            
-            # make prediction
-            prediction = self.prediction(processed_data.reshape(processed_data.shape[0],-1))
-            # prediction = self.prediction(feature_embedding)
-            
-            predictions.append(prediction)
+        # feature importance learning
+        feature_importance = []
+        for learner_index in range(64):
+            feature_importance.append(torch.cat([self.feature_importance_learners[learner_index](feature_embedding[:,i*self.hidden_dim:(i+1)*self.hidden_dim]) for i in range(self.number_of_columns)], dim=1)) # [batch_size, num_cols + cat_cols, 1]
+        feature_importance = torch.stack(feature_importance, dim=1) # [batch_size, 64, num_cols + cat_cols]
+        feature_importance = torch.layer_norm(feature_importance, feature_importance.shape)
+        # print(feature_importance.shape)
         
-        predictions = torch.stack(predictions, dim=0)
-        prediction = torch.mean(predictions, dim=0)
+        # weighted feature importance
+        feature_importance_weight = self.weight_feature_importance(feature_importance.reshape(len(input_data),-1)) # [batch_size, 64]
+        feature_importance_weight = torch.softmax(feature_importance_weight, dim=1) # [batch_size, 64]
+        # weighted sum
+        feature_importance = torch.sum(feature_importance * feature_importance_weight.unsqueeze(-1), dim=1) # [batch_size, num_cols + cat_cols]
+        # print(feature_importance.shape)
+            
+        # weighted feature embedding 
+        feature_embedding = feature_embedding.reshape((len(input_data),self.number_of_columns, -1)) * feature_importance.unsqueeze(-1) # [batch_size, (num_cols + cat_cols) * hidden_dim]
+        feature_embedding = feature_embedding.reshape((len(input_data), -1)) # [batch_size, (num_cols + cat_cols) * hidden_dim]
+        
+        
+        # top K feature importance
+        K = self.K
+        value, indices = torch.topk(feature_importance, K) # (value: [batch_size, k], indices: [batch_size, k])
+        mask = torch.zeros_like(feature_importance, device=DEVICE)
+        mask.scatter_(1, indices, 1)
+        importance_topK = torch.where(mask > 0, feature_importance, torch.empty(feature_importance.shape,device=DEVICE).fill_(-1e9)) # [batch_size, cols]
+        importance_topK = torch.softmax(importance_topK, dim=1) # [batch_size, cols]
+        
+        extractor.update(feature_importance.sum(dim=0)/len(input_data))
+        del mask, feature_importance, value, indices
+            
+        processed_data = []
+        processed_indices = []
+        for target_col in range(self.number_of_columns):
+            importance_topK_current = importance_topK.clone()# [batch_size, cols] 
+            indices = importance_topK_current.T[target_col].nonzero().T[0] # selected samples' indices  
+            
+            if indices.shape[0] == 0:
+                continue
+            
+            importance_topK_current = importance_topK_current[importance_topK_current.T[target_col]>0]# [????, cols]
+            
+            # for target column, set its importance to 0. so that it will not be fully connected graph
+            # copy target column
+            tmp = torch.clone(importance_topK_current[:,target_col]) # [????], save for future weighted sum
+            importance_topK_current[:,target_col] = 0 # [????, cols]
+            # multiply to get weighted adj
+            weighted_adj = torch.matmul(importance_topK_current, importance_topK_current.T) # [batch_size, cols] * [cols, batch_size] = [batch_size, batch_size]
+            # prune the diagonal
+            weighted_adj = weighted_adj - torch.diag(weighted_adj.diagonal())
+
+            # construct graph
+            edge_index = weighted_adj.nonzero().T  # [2, num_edges]
+            edge_wight = weighted_adj[edge_index[0], edge_index[1]] # [num_edges]
+            edge_wight = torch.softmax(edge_wight, dim=0)
+
+            
+            # if True and epoch % 10 == 0:
+            #     print('in graph', target_col, 'nodes:', len(indices), 'edges:', len(edge_wight),'ratio', len(edge_wight)/(len(indices)**2+0.000001))
+            
+            
+            # features = (feature_embedding[indices]) # [????, cols*hidden_dim]
+            features = (feature_embedding.reshape(len(input_data),self.number_of_columns,-1)[indices][:,target_col,:]) # [????, hidden_dim]
+
+            # construct graph 
+            data = Data(x=features, edge_index=edge_index, edge_weight=edge_wight, indices=indices) 
+            
+            del features, edge_index, edge_wight, weighted_adj, importance_topK_current, tmp
+            
+            # apply GCN
+            x = self.conv_GCN_input(data.x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
+            # x = self.conv_1_input(data.x, data.edge_index)  # [???, hidden_dim]
+            x = torch.relu(x)
+            x = torch.layer_norm(x, x.shape) # [???, hidden_dim]
+            # x = torch.nn.Dropout(p=0.5)(x)
+            # x = self.conv_GCN_2(x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
+            # x = torch.relu(x)
+            # x = torch.layer_norm(x, x.shape)
+
+            processed_data.append(x)
+            processed_indices.append(indices)
+        
+        processed_data = torch.cat(processed_data, dim=0) 
+        processed_indices = torch.cat(processed_indices, dim=0)
+
+        processed_data = processed_data[processed_indices.argsort()] # ???????
+        processed_data = torch.split(processed_data, self.K) # ?????????
+        processed_data = torch.stack(list(processed_data), dim=0) # ???????????
+        # processed_data = torch.sum(list(processed_data), dim=0) # ???????????
+
+        # cat residual
+        processed_data = torch.cat((processed_data, feature_embedding.reshape((len(input_data),self.number_of_columns,-1))), dim=1) # [batch_size, K+cols , hidden_dim]
+        
+        # make prediction
+        prediction = self.prediction(processed_data.reshape(processed_data.shape[0],-1))
+        # prediction = self.prediction(feature_embedding)
+        
+        # predictions.append(prediction)
+        
+        # predictions = torch.stack(predictions, dim=0)
+        # prediction = torch.mean(predictions, dim=0)
         
         return prediction
