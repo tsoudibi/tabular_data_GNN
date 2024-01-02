@@ -212,26 +212,27 @@ class K_graph_Multi(torch.nn.Module):
         )
         
         # feature importance learning
+        self.num_learners = 32
         self.feature_importance_learners = torch.nn.ModuleList([torch.nn.Sequential(
             torch.nn.Linear(self.hidden_dim, self.hidden_dim),
             torch.nn.ReLU(),
             torch.nn.LayerNorm(self.hidden_dim),
             torch.nn.Dropout(p=0.5),
             torch.nn.Linear(self.hidden_dim, 1),
-        )  for i in range(64)])
+        )  for i in range(self.num_learner)])
         
         # graph convolution layers
-        # self.conv_GCN_input = torch_geometric.nn.GCNConv(self.number_of_columns*self.hidden_dim, self.hidden_dim)
-        self.conv_GCN_input = torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim)
+        self.conv_GCN_input = torch_geometric.nn.GCNConv(self.number_of_columns*self.hidden_dim, self.hidden_dim)
+        # self.conv_GCN_input = torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim)
         # self.conv_1_input = torch_geometric.nn.GATConv(self.number_of_columns*self.hidden_dim, self.hidden_dim)
         self.conv_GCN_2 = torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim)
         
         # self.transform = torch.nn.Linear(self.number_of_columns*self.hidden_dim, self.hidden_dim)
         
         self.weight_feature_importance = torch.nn.Sequential(
-            torch.nn.Linear(self.number_of_columns*64, 64),
+            torch.nn.Linear(self.number_of_columns*self.num_learner, self.num_learner),
             torch.nn.ReLU(),
-            torch.nn.LayerNorm(64),
+            torch.nn.LayerNorm(self.num_learner),
         )
         
     def forward(self, input_data, epoch = -1):
@@ -250,15 +251,15 @@ class K_graph_Multi(torch.nn.Module):
         
         # feature importance learning
         feature_importance = []
-        for learner_index in range(64):
+        for learner_index in range(self.num_learner):
             feature_importance.append(torch.cat([self.feature_importance_learners[learner_index](feature_embedding[:,i*self.hidden_dim:(i+1)*self.hidden_dim]) for i in range(self.number_of_columns)], dim=1)) # [batch_size, num_cols + cat_cols, 1]
-        feature_importance = torch.stack(feature_importance, dim=1) # [batch_size, 64, num_cols + cat_cols]
+        feature_importance = torch.stack(feature_importance, dim=1) # [batch_size, 128, num_cols + cat_cols]
         feature_importance = torch.layer_norm(feature_importance, feature_importance.shape)
         # print(feature_importance.shape)
         
         # weighted feature importance
-        feature_importance_weight = self.weight_feature_importance(feature_importance.reshape(len(input_data),-1)) # [batch_size, 64]
-        feature_importance_weight = torch.softmax(feature_importance_weight, dim=1) # [batch_size, 64]
+        feature_importance_weight = self.weight_feature_importance(feature_importance.reshape(len(input_data),-1)) # [batch_size, 128]
+        feature_importance_weight = torch.softmax(feature_importance_weight, dim=1) # [batch_size, 128]
         # weighted sum
         feature_importance = torch.sum(feature_importance * feature_importance_weight.unsqueeze(-1), dim=1) # [batch_size, num_cols + cat_cols]
         # print(feature_importance.shape)
@@ -292,7 +293,6 @@ class K_graph_Multi(torch.nn.Module):
             
             # for target column, set its importance to 0. so that it will not be fully connected graph
             # copy target column
-            tmp = torch.clone(importance_topK_current[:,target_col]) # [????], save for future weighted sum
             importance_topK_current[:,target_col] = 0 # [????, cols]
             # multiply to get weighted adj
             weighted_adj = torch.matmul(importance_topK_current, importance_topK_current.T) # [batch_size, cols] * [cols, batch_size] = [batch_size, batch_size]
@@ -309,13 +309,13 @@ class K_graph_Multi(torch.nn.Module):
             #     print('in graph', target_col, 'nodes:', len(indices), 'edges:', len(edge_wight),'ratio', len(edge_wight)/(len(indices)**2+0.000001))
             
             
-            # features = (feature_embedding[indices]) # [????, cols*hidden_dim]
-            features = (feature_embedding.reshape(len(input_data),self.number_of_columns,-1)[indices][:,target_col,:]) # [????, hidden_dim]
+            features = (feature_embedding[indices]) # [????, cols*hidden_dim]
+            # features = (feature_embedding.reshape(len(input_data),self.number_of_columns,-1)[indices][:,target_col,:]) # [????, hidden_dim]
 
             # construct graph 
             data = Data(x=features, edge_index=edge_index, edge_weight=edge_wight, indices=indices) 
             
-            del features, edge_index, edge_wight, weighted_adj, importance_topK_current, tmp
+            del features, edge_index, edge_wight, weighted_adj, importance_topK_current
             
             # apply GCN
             x = self.conv_GCN_input(data.x, data.edge_index, data.edge_weight)  # [???, hidden_dim]

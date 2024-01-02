@@ -1,7 +1,7 @@
 # default config
 run_config:
   device: cuda
-  dataset: compass_old
+  dataset: compas
   metric: ACC
   max_epoch: 500
   learning_rate: 0.001
@@ -16,5 +16,5 @@ wandb_config:
   entity: a220284268
   project: TabularGNN_V2
   name : 3_fold
-  group: K_graph_multi V2
+  group: K_graph_multi V2 all feature 32
   notes: V2

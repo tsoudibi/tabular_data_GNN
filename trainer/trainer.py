@@ -14,8 +14,8 @@ def test_run():
     '''
     set_seed(get_run_config()['random_state'])
     x, y, (NUM, CAT, LABEL, cat_num) = get_data()
-    # the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
-    the_model = K_graph_Multi(NUM, CAT, [LABEL], cat_num).to(DEVICE)
+    the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
+    # the_model = K_graph_Multi(NUM, CAT, [LABEL], cat_num).to(DEVICE)
     optimizer = torch.optim.SGD(the_model.parameters(), lr=0.001)
 
     # optimizer.step()
