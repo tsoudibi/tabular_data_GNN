@@ -10,11 +10,11 @@ run_config:
   validation_ratio: 0.1
   K_ratio: 0.3
   hidden_dim: 128
-  random_state: 42
+  random_state: 95408
 wandb_config:
   use_wandb: True
   entity: a220284268
   project: TabularGNN_V2
   name : 3_fold
-  group: K_graph_multi V2 all feature 32
+  group: K_graph_multi V2 all feature 256
   notes: V2
