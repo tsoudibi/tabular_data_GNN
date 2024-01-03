@@ -9,22 +9,37 @@ from torcheval.metrics import BinaryAUROC
 from sklearn.model_selection import KFold
 
 class early_stopper():
-    def __init__(self, patience):
+    def __init__(self, patience, mode='min'):
+        '''
+        early stopper\n
+        input:
+            - patience: int, how many epoch to wait before stop
+            - mode: str, 'min' or 'max', if 'min', will stop when val_loss stop decreasing, the less the better. if 'max', will stop when val_loss stop increasing, the more the better
+        '''
         self.patience = patience
         self.counter = 0
         self.best_score = None
         self.early_stop = False
-    def __call__(self, score):
+        self.mode = mode
+    def update(self, score):
         if self.best_score == None:
             self.best_score = score
-        elif score < self.best_score:
-            self.counter += 1
-            if self.counter >= self.patience:
-                self.early_stop = True
-        else:
-            self.best_score = score
-            self.counter = 0
+        elif self.mode == 'min':
+            if score < self.best_score:
+                self.best_score = score
+                self.counter = 0
+            else:
+                self.counter += 1
+        elif self.mode == 'max':
+            if score > self.best_score:
+                self.best_score = score
+                self.counter = 0
+            else:
+                self.counter += 1
+        if self.counter >= self.patience:
+            self.early_stop = True
         return self.early_stop
+
 
 def test_run():
     '''
@@ -179,13 +194,13 @@ def train_one_run(configs, data_package = None):
     optimizer = torch.optim.SGD(the_model.parameters(), lr = learning_rate)
     
     # early stopper
-    early_stopper_ = early_stopper(configs['early_stop_patience'])
+    early_stopper_ = early_stopper(configs['early_stop_patience'], mode = 'min')
     
     # train the model
     datas = (train_data, train_label, validation_data, validation_label)
     for i in range(max_epoch):
         log_package = train_one_epoch(the_model, optimizer, datas, batch_size, epoch=i+1)
-        if early_stopper_(log_package['val_loss']):
+        if early_stopper_.update(log_package['val_loss']):
             print('early stop  at epoch', i+1)
             break
         # print(extractor.get())

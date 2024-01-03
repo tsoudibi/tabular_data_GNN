@@ -17,6 +17,6 @@ wandb_config:
   use_wandb: True
   entity: a220284268
   project: TabularGNN_V2
-  name : 3_fold
-  group: K_graph_multi V2 all feature 256
+  name : 3_fold with early stop
+  group: KG_multi ES ALL_feat 64
   notes: V2.5
