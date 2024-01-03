@@ -6,15 +6,17 @@ run_config:
   max_epoch: 500
   learning_rate: 0.001
   batch_size: 1024
+  num_learner: 64
   train_ratio: 0.7
   validation_ratio: 0.1
   K_ratio: 0.3
   hidden_dim: 128
-  random_state: 95408
+  random_state: 42
+  early_stop_patience: 5
 wandb_config:
   use_wandb: True
   entity: a220284268
   project: TabularGNN_V2
   name : 3_fold
   group: K_graph_multi V2 all feature 256
-  notes: V2
+  notes: V2.5

@@ -212,7 +212,7 @@ class K_graph_Multi(torch.nn.Module):
         )
         
         # feature importance learning
-        self.num_learner = 256
+        self.num_learner = get_run_config()['num_learner']
         self.feature_importance_learners = torch.nn.ModuleList([torch.nn.Sequential(
             torch.nn.Linear(self.hidden_dim, self.hidden_dim),
             torch.nn.ReLU(),

@@ -8,6 +8,24 @@ from torcheval.metrics import MulticlassAccuracy
 from torcheval.metrics import BinaryAUROC
 from sklearn.model_selection import KFold
 
+class early_stopper():
+    def __init__(self, patience):
+        self.patience = patience
+        self.counter = 0
+        self.best_score = None
+        self.early_stop = False
+    def __call__(self, score):
+        if self.best_score == None:
+            self.best_score = score
+        elif score < self.best_score:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.counter = 0
+        return self.early_stop
+
 def test_run():
     '''
     run a test run of training, check if the model can be trained
@@ -58,6 +76,7 @@ def train_one_epoch(model, optimizer, datas, batch_size, epoch):
 
     # losses and metrics
     batch_loss = 0
+    valid_loss = 0
     train_acc = MulticlassAccuracy(num_classes=2).to(DEVICE)
     train_auc = BinaryAUROC().to(DEVICE)
     valid_acc = MulticlassAccuracy(num_classes=2).to(DEVICE)
@@ -89,17 +108,24 @@ def train_one_epoch(model, optimizer, datas, batch_size, epoch):
             stepper.update()
         
             with torch.no_grad():
-                for i in range(len(validation_data)):
-                    output = model(validation_data[i], epoch=-1)
-                    # loss = torch.nn.functional.cross_entropy(output, validation_label[i])
+                for j in range(len(validation_data)):
+                    output = model(validation_data[j], epoch=-1)
+                    valid_loss += torch.nn.functional.cross_entropy(output, validation_label[j]).item()
                     preds = output.softmax(dim=1)
-                    true = torch.nn.functional.one_hot(validation_label[i], num_classes=2).to(DEVICE)
+                    true = torch.nn.functional.one_hot(validation_label[j], num_classes=2).to(DEVICE)
                     valid_acc.update(torch.argmax(preds,1),true.T[1])
                     valid_auc.update(preds.T[0],true.T[0])
-                stepper.set_postfix({'loss': round(batch_loss/(i+1), 3), 'acc': round(train_acc.item(), 3), 'AUC': round(train_auc.item(), 3), 'val_acc': round(valid_acc.compute().item(), 3), 'val_AUC': round(valid_auc.compute().item(), 3)})
+                stepper.set_postfix({'loss': round(batch_loss/(i+1), 3), 'acc': round(train_acc.item(), 3), 'AUC': round(train_auc.item(), 3), 'val_loss':round(valid_loss/(i+1), 3),'val_acc': round(valid_acc.compute().item(), 3), 'val_AUC': round(valid_auc.compute().item(), 3)})
                 if get_wandb_config()['use_wandb']:
-                    get_logger().log({'loss': round(batch_loss/(i+1), 3), 'acc': round(train_acc.item(), 3), 'AUC': round(train_auc.item(), 3), 'val_acc': round(valid_acc.compute().item(), 3), 'val_AUC': round(valid_auc.compute().item(), 3)})
-
+                    get_logger().log({'loss': round(batch_loss/(i+1), 3), 'acc': round(train_acc.item(), 3), 'AUC': round(train_auc.item(), 3), 'val_loss':round(valid_loss/(i+1), 3), 'val_acc': round(valid_acc.compute().item(), 3), 'val_AUC': round(valid_auc.compute().item(), 3)})
+    return {
+        'loss': round(batch_loss/(i+1), 3),
+        'train_acc': round(train_acc.item(), 3),
+        'train_auc': round(train_auc.item(), 3),
+        'val_loss' :round(valid_loss/(i+1), 3),
+        'val_acc': round(valid_acc.compute().item(), 3),
+        'val_auc': round(valid_auc.compute().item(), 3)
+    }
             
 def gather_data_package() ->(tuple):
     '''
@@ -152,12 +178,18 @@ def train_one_run(configs, data_package = None):
     # the_model = MLP(NUM, CAT, [LABEL], cat_num).to(DEVICE)
     optimizer = torch.optim.SGD(the_model.parameters(), lr = learning_rate)
     
+    # early stopper
+    early_stopper_ = early_stopper(configs['early_stop_patience'])
+    
     # train the model
     datas = (train_data, train_label, validation_data, validation_label)
     for i in range(max_epoch):
-        train_one_epoch(the_model, optimizer, datas, batch_size, epoch=i+1)
-        print(extractor.get())
-        extractor.reset()
+        log_package = train_one_epoch(the_model, optimizer, datas, batch_size, epoch=i+1)
+        if early_stopper_(log_package['val_loss']):
+            print('early stop  at epoch', i+1)
+            break
+        # print(extractor.get())
+        # extractor.reset()
     
     # test the model
     with torch.no_grad():
