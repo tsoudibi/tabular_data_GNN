@@ -278,8 +278,8 @@ class K_graph_Multi(torch.nn.Module):
         importance_topK = torch.softmax(importance_topK, dim=1) # [batch_size, cols]
         
         extractor.update(feature_importance.sum(dim=0)/len(input_data))
-        del mask, feature_importance, value, indices
-            
+        del mask, feature_importance, value, indices, feature_importance_weight
+        torch.cuda.empty_cache()
         processed_data = []
         processed_indices = []
         for target_col in range(self.number_of_columns):
@@ -316,7 +316,7 @@ class K_graph_Multi(torch.nn.Module):
             data = Data(x=features, edge_index=edge_index, edge_weight=edge_wight, indices=indices) 
             
             del features, edge_index, edge_wight, weighted_adj, importance_topK_current
-            
+            torch.cuda.empty_cache()
             # apply GCN
             x = self.conv_GCN_input(data.x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
             # x = self.conv_1_input(data.x, data.edge_index)  # [???, hidden_dim]

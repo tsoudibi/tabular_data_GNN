@@ -241,6 +241,7 @@ def train_K_fold(config: dict):
     
     for index, (train_index, test_index) in enumerate(kf.split(x)):
         print('=================[', index+1,'Fold ]=================')
+        set_seed(get_run_config()['random_state'])
         # split train and test data
         train_data, train_label = x[train_index], y[train_index]
         test_data, test_label = x[test_index], y[test_index]
