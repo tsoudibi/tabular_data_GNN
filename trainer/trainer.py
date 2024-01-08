@@ -82,6 +82,7 @@ def train_one_epoch(model, optimizer, datas, batch_size, epoch):
         - epoch: current epoch
     '''
     train_data, train_label, validation_data, validation_label = datas
+    train_data, train_label, validation_data, validation_label = train_data.detach(), train_label.detach(), validation_data.detach(), validation_label.detach()
     
     # slice data into batch
     train_data = torch.split(train_data, batch_size)
@@ -107,6 +108,7 @@ def train_one_epoch(model, optimizer, datas, batch_size, epoch):
         loss = torch.nn.functional.cross_entropy(output, train_label[i]) * model.number_of_columns
         loss.backward()
         optimizer.step()
+        loss = loss.detach()
         batch_loss += loss.item()
         
         # metrics
@@ -117,14 +119,14 @@ def train_one_epoch(model, optimizer, datas, batch_size, epoch):
         
         # at the end of epoch, print result and validate the model
         if i == len(train_data) - 1:
-            train_acc = train_acc.compute()
-            train_auc = train_auc.compute()
+            train_acc = train_acc.compute().detach()
+            train_auc = train_auc.compute().detach()
             stepper.set_postfix({'loss': round(batch_loss/(i+1), 3), 'acc': round(train_acc.item(), 3), 'AUC': round(train_auc.item(), 3)})
             stepper.update()
         
             with torch.no_grad():
                 for j in range(len(validation_data)):
-                    output = model(validation_data[j], epoch=-1)
+                    output = model(validation_data[j], epoch=-1).detach()
                     valid_loss += torch.nn.functional.cross_entropy(output, validation_label[j]).item()
                     preds = output.softmax(dim=1)
                     true = torch.nn.functional.one_hot(validation_label[j], num_classes=2).to(DEVICE)
@@ -133,14 +135,16 @@ def train_one_epoch(model, optimizer, datas, batch_size, epoch):
                 stepper.set_postfix({'loss': round(batch_loss/(i+1), 3), 'acc': round(train_acc.item(), 3), 'AUC': round(train_auc.item(), 3), 'val_loss':round(valid_loss/(i+1), 3),'val_acc': round(valid_acc.compute().item(), 3), 'val_AUC': round(valid_auc.compute().item(), 3)})
                 if get_wandb_config()['use_wandb']:
                     get_logger().log({'loss': round(batch_loss/(i+1), 3), 'acc': round(train_acc.item(), 3), 'AUC': round(train_auc.item(), 3), 'val_loss':round(valid_loss/(i+1), 3), 'val_acc': round(valid_acc.compute().item(), 3), 'val_AUC': round(valid_auc.compute().item(), 3)})
-    return {
-        'loss': round(batch_loss/(i+1), 3),
-        'train_acc': round(train_acc.item(), 3),
-        'train_auc': round(train_auc.item(), 3),
-        'val_loss' :round(valid_loss/(i+1), 3),
-        'val_acc': round(valid_acc.compute().item(), 3),
-        'val_auc': round(valid_auc.compute().item(), 3)
-    }
+    # package = {
+    #     'loss': round(batch_loss/(i+1), 3),
+    #     'train_acc': round(train_acc.item(), 3),
+    #     'train_auc': round(train_auc.item(), 3),
+    #     'val_loss' :round(valid_loss/(i+1), 3),
+    #     'val_acc': round(valid_acc.compute().detach().item(), 3),
+    #     'val_auc': round(valid_auc.compute().detach().item(), 3)
+    # }
+    # del train_data, train_label, validation_data, validation_label, batch_loss, valid_loss, train_acc, train_auc, valid_acc, valid_auc
+    # return package
             
 def gather_data_package() ->(tuple):
     '''
@@ -199,10 +203,13 @@ def train_one_run(configs, data_package = None):
     # train the model
     datas = (train_data, train_label, validation_data, validation_label)
     for i in range(max_epoch):
-        log_package = train_one_epoch(the_model, optimizer, datas, batch_size, epoch=i+1)
-        if early_stopper_.update(log_package['val_loss']):
-            print('early stop  at epoch', i+1)
-            break
+        # log_package = train_one_epoch(the_model, optimizer, datas, batch_size, epoch=i+1)
+        train_one_epoch(the_model, optimizer, datas, batch_size, epoch=i+1)
+        # if early_stopper_.update(log_package['val_loss']):
+        #     print('early stop  at epoch', i+1)
+        #     break
+        # del log_package
+        torch.cuda.empty_cache()
         # print(extractor.get())
         # extractor.reset()
     
@@ -211,7 +218,7 @@ def train_one_run(configs, data_package = None):
         test_data = torch.split(test_data, batch_size)
         test_label = torch.split(test_label, batch_size)
         for i in range(len(test_data)):
-            output = the_model(test_data[i], epoch=-1)
+            output = the_model(test_data[i], epoch=-1).detach()
             preds = output.softmax(dim=1)
             true = torch.nn.functional.one_hot(test_label[i], num_classes=2).to(DEVICE)
             test_acc = MulticlassAccuracy(num_classes=2).to(DEVICE)

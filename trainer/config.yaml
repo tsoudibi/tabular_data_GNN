@@ -1,11 +1,11 @@
 # default config
 run_config:
   device: cuda
-  dataset: compass_old
+  dataset: electricity_cat
   metric: ACC
-  max_epoch: 150
+  max_epoch: 250
   learning_rate: 0.001
-  batch_size: 1000
+  batch_size: 1024
   num_learner: 64
   train_ratio: 0.7
   validation_ratio: 0.1
@@ -18,5 +18,5 @@ wandb_config:
   entity: a220284268
   project: TabularGNN_V2
   name : 3_fold with early stop
-  group: KG_multi ES ALL_feat 64
+  group: KG_multi ES ALL_feat 64 (test)
   notes: V2.5

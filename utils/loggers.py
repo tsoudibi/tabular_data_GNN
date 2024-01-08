@@ -36,28 +36,28 @@ class wandb_logger():
         import wandb
         import os
         os.environ["WANDB_SILENT"] = "true"
-        wandb.init( project = wandb_config['project'], 
+        self.run = wandb.init( project = wandb_config['project'], 
                     name = wandb_config['name'],
                     notes = wandb_config['notes'],
                     entity = wandb_config['entity'],
                     group = wandb_config['group'],
                     # track hyperparameters and run metadata
                     config = dict(get_run_config(), **wandb_config))
-        self.wandb = wandb
         self.iter = 0
         return
     
     def log(self, package: dict):
-        self.wandb.log(package, step=self.iter)
+        self.run.log(package, step=self.iter)
         self.iter += 1
         return
     
     def finish(self):
-        self.wandb.finish()
+        self.run.finish()
+        self.reset()
         return
     
     def get(self):
-        return self.wandb
+        return self.run
     
     def reset(self):
         self.iter = 0
@@ -70,4 +70,8 @@ def get_logger():
 def set_logger(new_logger) -> (None):
     global logger
     logger = new_logger
+    return
+def del_logger() -> (None):
+    global logger
+    logger = None
     return

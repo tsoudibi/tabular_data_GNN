@@ -104,7 +104,7 @@ class K_graph(torch.nn.Module):
         importance_topK = torch.softmax(importance_topK, dim=1) # [batch_size, cols]
         # importance_topK = torch.stack([importance_topK.clone() for _ in range(self.number_of_columns)], dim=0) # [cols, batch_size, cols]
         
-        extractor.update(feature_importance.sum(dim=0)/len(input_data))
+        # extractor.update(feature_importance.sum(dim=0)/len(input_data))
         del feature_embedding_num, feature_embedding_cat, num_data
         del mask, feature_importance, value, indices
         
@@ -277,7 +277,7 @@ class K_graph_Multi(torch.nn.Module):
         importance_topK = torch.where(mask > 0, feature_importance, torch.empty(feature_importance.shape,device=DEVICE).fill_(-1e9)) # [batch_size, cols]
         importance_topK = torch.softmax(importance_topK, dim=1) # [batch_size, cols]
         
-        extractor.update(feature_importance.sum(dim=0)/len(input_data))
+        # extractor.update(feature_importance.sum(dim=0)/len(input_data))
         del mask, feature_importance, value, indices, feature_importance_weight
         torch.cuda.empty_cache()
         processed_data = []
