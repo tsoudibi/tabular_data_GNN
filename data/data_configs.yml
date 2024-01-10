@@ -239,7 +239,25 @@ covertype_cat:
   TARGET:
     class
 
-
+covertype_num:
+  full_name: covertype_num
+  file_path: data/covertype_num.csv
+  task: classification
+  num_classes: 2
+  CAT:
+  NUM:
+     - X1 
+     - X2 
+     - X3 
+     - X4 
+     - X5 
+     - X6 
+     - X7 
+     - X8 
+     - X9 
+     - X10
+  TARGET:
+    Y
 
 
     

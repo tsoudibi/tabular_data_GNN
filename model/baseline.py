@@ -24,10 +24,7 @@ class MLP(torch.nn.Module):
         self.cat_embeddings = torch.nn.ModuleList([torch.nn.Embedding(cat_num[i], self.hidden_dim) for i in range(self.cat_cols)])
         
         self.prediction = torch.nn.Sequential(
-            torch.nn.Linear(self.hidden_dim * self.number_of_columns, self.hidden_dim),
-            torch.nn.ReLU(),
-            torch.nn.LayerNorm(self.hidden_dim),
-            torch.nn.Linear(self.hidden_dim, self.label_cols + 1)
+            torch.nn.Linear(self.hidden_dim * self.number_of_columns, self.label_cols + 1),
         )
         
     def forward(self, input_data, epoch = -1):

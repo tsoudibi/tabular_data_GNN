@@ -9,3 +9,6 @@ saved_models/
 
 # ignore wandb
 wandb/
+
+# ignore data 
+*.csv
