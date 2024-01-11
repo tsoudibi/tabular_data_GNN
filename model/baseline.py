@@ -35,11 +35,14 @@ class MLP(torch.nn.Module):
         feature_embedding_num = torch.nn.ReLU()(feature_embedding_num)
         feature_embedding_num = torch.layer_norm(feature_embedding_num, feature_embedding_num.shape)
         # categorical feature
-        feature_embedding_cat = torch.cat([self.cat_embeddings[i](input_data[:,self.num_cols+i].long()) for i in range(self.cat_cols)], dim=1) # [batch_size, cat_cols * hidden_dim]
-        feature_embedding_cat = torch.layer_norm(feature_embedding_cat, feature_embedding_cat.shape)
+        if self.cat_cols != 0:
+            feature_embedding_cat = torch.cat([self.cat_embeddings[i](input_data[:,self.num_cols+i].long()) for i in range(self.cat_cols)], dim=1) # [batch_size, cat_cols * hidden_dim]
+            feature_embedding_cat = torch.layer_norm(feature_embedding_cat, feature_embedding_cat.shape)
         # concat
-        feature_embedding = torch.cat((feature_embedding_num, feature_embedding_cat), dim=1)
-        
+        if self.cat_cols != 0:
+            feature_embedding = torch.cat((feature_embedding_num, feature_embedding_cat), dim=1)
+        else:
+            feature_embedding = feature_embedding_num
         
         # make prediction
         prediction = self.prediction(feature_embedding)

@@ -74,10 +74,14 @@ class K_graph(torch.nn.Module):
         feature_embedding_num = torch.nn.ReLU()(feature_embedding_num)
         feature_embedding_num = torch.layer_norm(feature_embedding_num, feature_embedding_num.shape)
         # categorical feature
-        feature_embedding_cat = torch.cat([self.cat_embeddings[i](input_data[:,self.num_cols+i].long()) for i in range(self.cat_cols)], dim=1) # [batch_size, cat_cols * hidden_dim]
-        feature_embedding_cat = torch.layer_norm(feature_embedding_cat, feature_embedding_cat.shape)
+        if self.cat_cols != 0:
+            feature_embedding_cat = torch.cat([self.cat_embeddings[i](input_data[:,self.num_cols+i].long()) for i in range(self.cat_cols)], dim=1) # [batch_size, cat_cols * hidden_dim]
+            feature_embedding_cat = torch.layer_norm(feature_embedding_cat, feature_embedding_cat.shape)
         # concat
-        feature_embedding = torch.cat((feature_embedding_num, feature_embedding_cat), dim=1) # [batch_size, (num_cols + cat_cols) * hidden_dim]
+        if self.cat_cols != 0:
+            feature_embedding = torch.cat((feature_embedding_num, feature_embedding_cat), dim=1) # [batch_size, (num_cols + cat_cols) * hidden_dim]
+        else:
+            feature_embedding = feature_embedding_num
         # feature_embedding = feature_embedding.reshape((len(input_data), self.number_of_columns, -1)) # [batch_size, (num_cols + cat_cols), hidden_dim]
         
         # feature importance learning
@@ -105,8 +109,10 @@ class K_graph(torch.nn.Module):
         # importance_topK = torch.stack([importance_topK.clone() for _ in range(self.number_of_columns)], dim=0) # [cols, batch_size, cols]
         
         # extractor.update(feature_importance.sum(dim=0)/len(input_data))
-        del feature_embedding_num, feature_embedding_cat, num_data
-        del mask, feature_importance, value, indices
+        try:
+            del feature_embedding_num, feature_embedding_cat, num_data, mask, feature_importance, value, indices
+        except:
+            pass
         
         
         processed_data = []
@@ -243,11 +249,16 @@ class K_graph_Multi(torch.nn.Module):
         feature_embedding_num = torch.nn.ReLU()(feature_embedding_num)
         feature_embedding_num = torch.layer_norm(feature_embedding_num, feature_embedding_num.shape)
         # categorical feature
-        feature_embedding_cat = torch.cat([self.cat_embeddings[i](input_data[:,self.num_cols+i].long()) for i in range(self.cat_cols)], dim=1) # [batch_size, cat_cols * hidden_dim]
-        feature_embedding_cat = torch.layer_norm(feature_embedding_cat, feature_embedding_cat.shape)
+        if self.cat_cols != 0:
+            feature_embedding_cat = torch.cat([self.cat_embeddings[i](input_data[:,self.num_cols+i].long()) for i in range(self.cat_cols)], dim=1) # [batch_size, cat_cols * hidden_dim]
+            feature_embedding_cat = torch.layer_norm(feature_embedding_cat, feature_embedding_cat.shape)
         # concat
-        feature_embedding = torch.cat((feature_embedding_num, feature_embedding_cat), dim=1) # [batch_size, (num_cols + cat_cols) * hidden_dim]
-        del feature_embedding_num, feature_embedding_cat, num_data
+        if self.cat_cols != 0:
+            feature_embedding = torch.cat((feature_embedding_num, feature_embedding_cat), dim=1) # [batch_size, (num_cols + cat_cols) * hidden_dim]
+            del feature_embedding_num, feature_embedding_cat, num_data
+        else:
+            feature_embedding = feature_embedding_num
+            del feature_embedding_num, num_data
         
         # feature importance learning
         feature_importance = []

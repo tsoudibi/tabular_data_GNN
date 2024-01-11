@@ -27,7 +27,12 @@ def get_data() -> (torch.tensor, torch.tensor, (list, list, str, list)):
     data_pd = data_pd[NUM + CAT + [LABEL]]
 
     # caculate unique value of each categorical feature
-    cat_num = [len(data_pd[col].unique()) for col in CAT]
+    if len(CAT) == 0:
+        cat_num = []
+    elif len(CAT) == 1:
+        cat_num = [data_pd[CAT[0]].nunique()[0]]
+    else:
+        cat_num = [len(data_pd[col].unique()) for col in CAT]
 
     # normalize numerical data
     from sklearn.preprocessing import StandardScaler

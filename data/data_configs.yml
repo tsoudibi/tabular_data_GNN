@@ -286,7 +286,6 @@ credit:
   task: classification
   num_classes: 2
   CAT:
-    - SeriousDlqin2yrs
   NUM:
     - RevolvingUtilizationOfUnsecuredLines
     - age
