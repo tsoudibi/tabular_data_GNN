@@ -315,6 +315,7 @@ class K_graph_Multi(torch.nn.Module):
             edge_wight = weighted_adj[edge_index[0], edge_index[1]] # [num_edges]
             edge_wight = torch.softmax(edge_wight, dim=0)
 
+            del weighted_adj, importance_topK_current
             
             # if True and epoch % 10 == 0:
             #     print('in graph', target_col, 'nodes:', len(indices), 'edges:', len(edge_wight),'ratio', len(edge_wight)/(len(indices)**2+0.000001))
@@ -324,10 +325,10 @@ class K_graph_Multi(torch.nn.Module):
             # features = (feature_embedding.reshape(len(input_data),self.number_of_columns,-1)[indices][:,target_col,:]) # [????, hidden_dim]
 
             # construct graph 
-            data = Data(x=features, edge_index=edge_index, edge_weight=edge_wight, indices=indices) 
-            
-            del features, edge_index, edge_wight, weighted_adj, importance_topK_current
+            data = Data(x=features, edge_index=edge_index, edge_weight=edge_wight) 
+            del features, edge_index, edge_wight
             torch.cuda.empty_cache()
+            
             # apply GCN
             x = self.conv_GCN_input(data.x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
             # x = self.conv_1_input(data.x, data.edge_index)  # [???, hidden_dim]
@@ -340,6 +341,7 @@ class K_graph_Multi(torch.nn.Module):
 
             processed_data.append(x)
             processed_indices.append(indices)
+            del data, x
         
         processed_data = torch.cat(processed_data, dim=0) 
         processed_indices = torch.cat(processed_indices, dim=0)

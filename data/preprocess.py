@@ -30,7 +30,7 @@ def get_data() -> (torch.tensor, torch.tensor, (list, list, str, list)):
     if len(CAT) == 0:
         cat_num = []
     elif len(CAT) == 1:
-        cat_num = [data_pd[CAT[0]].nunique()[0]]
+        cat_num = [data_pd[CAT[0]].nunique()]
     else:
         cat_num = [len(data_pd[col].unique()) for col in CAT]
 

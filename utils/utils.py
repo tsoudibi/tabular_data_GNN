@@ -110,3 +110,8 @@ def get_run_config() -> (dict):
     return RUN_CONFIG['run_config']
 def get_wandb_config() -> (dict):
     return RUN_CONFIG['wandb_config']
+def update_run_config(key: str, value) -> (dict):
+    global RUN_CONFIG
+    RUN_CONFIG['run_config'][key] = value
+    print('=================[run config is updated]=================')
+    return RUN_CONFIG['run_config']

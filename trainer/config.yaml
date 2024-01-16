@@ -3,7 +3,7 @@ run_config:
   device: cuda
   dataset: credit
   metric: ACC
-  max_epoch: 500
+  max_epoch: 250
   learning_rate: 0.001
   batch_size: 1024
   num_learner: 64
