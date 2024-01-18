@@ -6,7 +6,7 @@ run_config:
   max_epoch: 250
   learning_rate: 0.001
   batch_size: 1024
-  num_learner: 64
+  num_learner: 32
   train_ratio: 0.7
   validation_ratio: 0.1
   K_ratio: 0.3
@@ -18,7 +18,7 @@ wandb_config:
   entity: a220284268
   project: TabularGNN_V3
   name : 3_fold with early stop
-  group: KG_multi ES ALL_feat 64
+  group: KG_multi ES ALL_feat 16
   # group: MLP baseline
   notes: V2.5
 
