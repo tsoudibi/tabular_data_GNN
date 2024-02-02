@@ -1,7 +1,6 @@
 from utils.utils import *
 from utils.loggers import *
-from model.model import *
-from model.baseline import *
+from model import *
 from data.preprocess import *
 from tqdm import trange
 from torcheval.metrics import MulticlassAccuracy
@@ -105,7 +104,8 @@ def train_one_epoch(model, optimizer, datas, batch_size, epoch):
         
         optimizer.zero_grad()
         output = model(train_data[i], epoch=epoch)
-        loss = torch.nn.functional.cross_entropy(output, train_label[i]) * model.number_of_columns
+        # loss = torch.nn.functional.cross_entropy(output, train_label[i]) * model.number_of_columns
+        loss = torch.nn.functional.cross_entropy(output, train_label[i]) 
         loss.backward()
         optimizer.step()
         loss = loss.detach()
@@ -193,7 +193,10 @@ def train_one_run(configs, data_package = None):
     
     # build model and optimizer
     # the_model = K_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
-    the_model = K_graph_Multi(NUM, CAT, [LABEL], cat_num).to(DEVICE)
+    # the_model = K_graph_Multi(NUM, CAT, [LABEL], cat_num).to(DEVICE)
+    # the_model = K_graph_Multi_noGraph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
+    # the_model = One_graph(NUM, CAT, [LABEL], cat_num).to(DEVICE)
+    the_model = K_graph_MultiLayers(NUM, CAT, [LABEL], cat_num).to(DEVICE)
     # the_model = MLP(NUM, CAT, [LABEL], cat_num).to(DEVICE)
     optimizer = torch.optim.SGD(the_model.parameters(), lr = learning_rate)
     

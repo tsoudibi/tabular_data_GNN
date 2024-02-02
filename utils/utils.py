@@ -113,5 +113,12 @@ def get_wandb_config() -> (dict):
 def update_run_config(key: str, value) -> (dict):
     global RUN_CONFIG
     RUN_CONFIG['run_config'][key] = value
+    
+    if key == 'dataset':
+        select_dataset(value)
+    if key == 'random_state':
+        set_seed(value)
+        
     print('=================[run config is updated]=================')
+    
     return RUN_CONFIG['run_config']

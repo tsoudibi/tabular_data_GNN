@@ -1,12 +1,12 @@
 # default config
 run_config:
   device: cuda
-  dataset: credit
+  dataset: compas
   metric: ACC
-  max_epoch: 250
+  max_epoch: 500
   learning_rate: 0.001
-  batch_size: 1024
-  num_learner: 32
+  batch_size: 512
+  num_learner: 8
   train_ratio: 0.7
   validation_ratio: 0.1
   K_ratio: 0.3
@@ -17,10 +17,13 @@ wandb_config:
   use_wandb: True
   entity: a220284268
   project: TabularGNN_V3
+  # project: TabularGNN ablation without GNN
   name : 3_fold with early stop
-  group: KG_multi ES ALL_feat 16
+  # group: K_graph_Multi_noGraph 
+  # group: KG_Multi normal
+  group: KGML L=3 res cat predict:MLP dropout V2
   # group: MLP baseline
-  notes: V2.5
+  notes: V4.1 small loss
 
 # available datasets:
 # adult

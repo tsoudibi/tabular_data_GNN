@@ -307,6 +307,8 @@ class K_graph_Multi(torch.nn.Module):
             importance_topK_current[:,target_col] = 0 # [????, cols]
             # multiply to get weighted adj
             weighted_adj = torch.matmul(importance_topK_current, importance_topK_current.T) # [batch_size, cols] * [cols, batch_size] = [batch_size, batch_size]
+            # threshold
+            # weighted_adj = torch.where(weighted_adj > 0.5, weighted_adj, torch.zeros_like(weighted_adj, device=DEVICE))
             # prune the diagonal
             weighted_adj = weighted_adj - torch.diag(weighted_adj.diagonal())
 
@@ -364,11 +366,14 @@ class K_graph_Multi(torch.nn.Module):
         # prediction = torch.mean(predictions, dim=0)
         
         return prediction
-    
-class K_graph_Multi_ATT(torch.nn.Module):
+   
+   
+
+class K_graph_Multi_noGraph(torch.nn.Module):
     def __init__(self, NUM, CAT, LABEL, cat_num):
-        super(K_graph_Multi_ATT, self).__init__()
+        super(K_graph_Multi_noGraph, self).__init__()
         '''
+        replace GNN with fully connected layer
         num_cols: number of numerical columns
         cat_cols: number of categorical columns
         label_cols: number of label columns
@@ -404,16 +409,22 @@ class K_graph_Multi_ATT(torch.nn.Module):
             torch.nn.Linear(self.hidden_dim, 1),
         )  for i in range(self.num_learner)])
         
-        # graph convolution layers
-        self.conv_GCN_input = torch_geometric.nn.GCNConv(self.number_of_columns*self.hidden_dim, self.hidden_dim)
-        # self.conv_GCN_input = torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim)
-        # self.conv_1_input = torch_geometric.nn.GATConv(self.number_of_columns*self.hidden_dim, self.hidden_dim)
-        self.conv_GCN_2 = torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim)
+        # # graph convolution layers
+        # self.conv_GCN_input = torch_geometric.nn.GCNConv(self.number_of_columns*self.hidden_dim, self.hidden_dim)
+        # # self.conv_GCN_input = torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim)
+        # # self.conv_1_input = torch_geometric.nn.GATConv(self.number_of_columns*self.hidden_dim, self.hidden_dim)
+        # self.conv_GCN_2 = torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim)
+        self.fake_GNN = torch.nn.Sequential(
+            torch.nn.Linear(self.number_of_columns*self.hidden_dim, self.hidden_dim),
+        )
         
-        # attention
-        decoder_layer = torch.nn.TransformerDecoderLayer(d_model=self.hidden_dim, nhead=8)
-        self.transformer_decoder = torch.nn.TransformerDecoder(decoder_layer, num_layers=6)
-
+        # self.transform = torch.nn.Linear(self.number_of_columns*self.hidden_dim, self.hidden_dim)
+        
+        self.weight_feature_importance = torch.nn.Sequential(
+            torch.nn.Linear(self.number_of_columns*self.num_learner, self.num_learner),
+            torch.nn.ReLU(),
+            torch.nn.LayerNorm(self.num_learner),
+        )
         
     def forward(self, input_data, epoch = -1):
         
@@ -442,11 +453,13 @@ class K_graph_Multi_ATT(torch.nn.Module):
         feature_importance = torch.layer_norm(feature_importance, feature_importance.shape)
         # print(feature_importance.shape)
         
-        # merge feature importance through attention
-        merged_feature_importance = torch.nn.parameter.Parameter(torch.empty(len(input_data),1, self.number_of_columns, device=DEVICE))
-        merged_feature_importance = self.transformer_decoder(merged_feature_importance, feature_importance) # [batch_size, 1, num_cols + cat_cols]
-        merged_feature_importance = merged_feature_importance.squeeze(1) # [batch_size, num_cols + cat_cols]
-    
+        # weighted feature importance
+        feature_importance_weight = self.weight_feature_importance(feature_importance.reshape(len(input_data),-1)) # [batch_size, 128]
+        feature_importance_weight = torch.softmax(feature_importance_weight, dim=1) # [batch_size, 128]
+        # weighted sum
+        feature_importance = torch.sum(feature_importance * feature_importance_weight.unsqueeze(-1), dim=1) # [batch_size, num_cols + cat_cols]
+        # print(feature_importance.shape)
+            
         # weighted feature embedding 
         feature_embedding = feature_embedding.reshape((len(input_data),self.number_of_columns, -1)) * feature_importance.unsqueeze(-1) # [batch_size, (num_cols + cat_cols) * hidden_dim]
         feature_embedding = feature_embedding.reshape((len(input_data), -1)) # [batch_size, (num_cols + cat_cols) * hidden_dim]
@@ -501,15 +514,16 @@ class K_graph_Multi_ATT(torch.nn.Module):
             del features, edge_index, edge_wight
             torch.cuda.empty_cache()
             
-            # apply GCN
-            x = self.conv_GCN_input(data.x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
-            # x = self.conv_1_input(data.x, data.edge_index)  # [???, hidden_dim]
-            x = torch.relu(x)
-            x = torch.layer_norm(x, x.shape) # [???, hidden_dim]
-            # x = torch.nn.Dropout(p=0.5)(x)
-            # x = self.conv_GCN_2(x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
+            # # apply GCN
+            # x = self.conv_GCN_input(data.x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
+            # # x = self.conv_1_input(data.x, data.edge_index)  # [???, hidden_dim]
             # x = torch.relu(x)
-            # x = torch.layer_norm(x, x.shape)
+            # x = torch.layer_norm(x, x.shape) # [???, hidden_dim]
+            # # x = torch.nn.Dropout(p=0.5)(x)
+            # # x = self.conv_GCN_2(x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
+            # # x = torch.relu(x)
+            # # x = torch.layer_norm(x, x.shape)
+            x = self.fake_GNN(data.x)
 
             processed_data.append(x)
             processed_indices.append(indices)
@@ -536,3 +550,4 @@ class K_graph_Multi_ATT(torch.nn.Module):
         # prediction = torch.mean(predictions, dim=0)
         
         return prediction
+   
