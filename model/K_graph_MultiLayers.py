@@ -30,26 +30,30 @@ class feature_embedding(torch.nn.Module):
         # categorical feature
         self.cat_embeddings = torch.nn.ModuleList([torch.nn.Embedding(cat_num[i], self.hidden_dim) for i in range(self.cat_cols)])
         
+        # batch norm
+        self.batch_norm = torch.nn.BatchNorm1d(self.number_of_columns * self.hidden_dim)
 
     def forward(self, input_data):
         # make feature embedding
         num_data = input_data[:,:self.num_cols].unsqueeze(-1).unsqueeze(-1) 
         feature_embedding_num = torch.cat([self.num_embeddings[i](num_data[:,i]) for i in range(self.num_cols)], dim=1).reshape(len(input_data), -1) # [batch_size, num_cols * hidden_dim]
         feature_embedding_num = torch.nn.ReLU()(feature_embedding_num)
-        feature_embedding_num = torch.layer_norm(feature_embedding_num, feature_embedding_num.shape)
+        # feature_embedding_num = torch.layer_norm(feature_embedding_num, feature_embedding_num.shape)
         # categorical feature
         if self.cat_cols != 0:
             feature_embedding_cat = torch.cat([self.cat_embeddings[i](input_data[:,self.num_cols+i].long()) for i in range(self.cat_cols)], dim=1) # [batch_size, cat_cols * hidden_dim]
-            feature_embedding_cat = torch.layer_norm(feature_embedding_cat, feature_embedding_cat.shape)
+            # feature_embedding_cat = torch.layer_norm(feature_embedding_cat, feature_embedding_cat.shape)
         # concat
         if self.cat_cols != 0:
             feature_embedding = torch.cat((feature_embedding_num, feature_embedding_cat), dim=1) # [batch_size, (num_cols + cat_cols) * hidden_dim]
-            feature_embedding = torch.layer_norm(feature_embedding, feature_embedding.shape)
+            # feature_embedding = torch.layer_norm(feature_embedding, feature_embedding.shape)
+            feature_embedding = self.batch_norm(feature_embedding)
             feature_embedding = feature_embedding.reshape(len(input_data), self.number_of_columns, -1)
             del feature_embedding_num, feature_embedding_cat, num_data
         else:
             feature_embedding = feature_embedding_num
-            feature_embedding = torch.layer_norm(feature_embedding, feature_embedding.shape)
+            # feature_embedding = torch.layer_norm(feature_embedding, feature_embedding.shape)
+            feature_embedding = self.batch_norm(feature_embedding)
             feature_embedding = feature_embedding.reshape(len(input_data), self.number_of_columns, -1)
             del feature_embedding_num, num_data
         
@@ -86,6 +90,8 @@ class K_graph_Layer(torch.nn.Module):
         self.GNNs = torch.nn.ModuleList([torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim) for i in range(self.C_input)])
         # self.conv_GCN_input = torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim)
         
+        # batch norm
+        self.batch_norm_GNN = torch.nn.BatchNorm1d(self.hidden_dim)
         
     def forward(self, input_embedding, epoch = -1):
         
@@ -95,7 +101,8 @@ class K_graph_Layer(torch.nn.Module):
         for learner_index in range(self.num_learner):
             feature_importance.append(torch.cat([self.feature_importance_learners[learner_index](input_embedding[:,i*self.hidden_dim:(i+1)*self.hidden_dim]) for i in range(self.C_input)], dim=1)) # [batch_size, num_cols + cat_cols, 1]
         feature_importance = torch.stack(feature_importance, dim=1) # [batch_size, num_learner, num_cols + cat_cols]
-        feature_importance = torch.layer_norm(feature_importance, feature_importance.shape)
+        # feature_importance = torch.layer_norm(feature_importance, feature_importance.shape)
+        feature_importance = torch.softmax(feature_importance, dim=2) # [batch_size, num_learner, num_cols + cat_cols]
         # print(feature_importance.shape)
         feature_importance = feature_importance.squeeze(1) # [batch_size, num_cols + cat_cols]
         # print(feature_importance.shape)
@@ -133,9 +140,10 @@ class K_graph_Layer(torch.nn.Module):
             # multiply to get weighted adj
             weighted_adj = torch.matmul(importance_topK_current, importance_topK_current.T) # [batch_size, cols] * [cols, batch_size] = [batch_size, batch_size]
             # threshold
+            # print(weighted_adj.mean(), weighted_adj.max(), weighted_adj.min())
             # weighted_adj = torch.where(weighted_adj > 0.5, weighted_adj, torch.zeros_like(weighted_adj, device=DEVICE))
             # prune the diagonal
-            weighted_adj = weighted_adj - torch.diag(weighted_adj.diagonal())
+            # weighted_adj = weighted_adj - torch.diag(weighted_adj.diagonal())
 
             # construct graph
             edge_index = weighted_adj.nonzero().T  # [2, num_edges]
@@ -157,10 +165,12 @@ class K_graph_Layer(torch.nn.Module):
             torch.cuda.empty_cache()
             
             # apply GCN
-            x = self.GNNs[target_col](data.x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
+            # x = self.GNNs[target_col](data.x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
+            x = self.GNNs[target_col](data.x, data.edge_index)  # [???, hidden_dim]
             # x = self.conv_1_input(data.x, data.edge_index)  # [???, hidden_dim]
             x = torch.relu(x)
             x = torch.layer_norm(x, x.shape) # [???, hidden_dim]
+            # x = self.batch_norm_GNN(x)
             # x = torch.nn.Dropout(p=0.5)(x)
             # x = self.conv_GCN_2(x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
             # x = torch.relu(x)
@@ -204,6 +214,10 @@ class K_graph_MultiLayers(torch.nn.Module):
         self.feature_embedding_learner = feature_embedding(NUM, CAT, LABEL, cat_num)
         
         # K_graph layers
+        # print(int(self.number_of_columns),
+        #       int(self.number_of_columns*0.5),
+        #       int(self.number_of_columns*0.25),
+        #       int(self.number_of_columns*0.125))
         self.K_graph_layer_1 = K_graph_Layer(int(self.number_of_columns)    , int(self.number_of_columns*0.5), self.hidden_dim)
         self.K_graph_layer_2 = K_graph_Layer(int(self.number_of_columns*0.5), int(self.number_of_columns*0.25), self.hidden_dim)
         self.K_graph_layer_3 = K_graph_Layer(int(self.number_of_columns*0.25), int(self.number_of_columns*0.125), self.hidden_dim)
@@ -235,18 +249,11 @@ class K_graph_MultiLayers(torch.nn.Module):
                                                 int(self.number_of_columns*0.25) +
                                                 int(self.number_of_columns*0.125)
                                               ),
-                            # self.hidden_dim * int(self.number_of_columns)),
                             self.hidden_dim * 1),
             torch.nn.ReLU(),
-            # torch.nn.LayerNorm(self.hidden_dim * int(self.number_of_columns)),
             torch.nn.LayerNorm(self.hidden_dim * 1),
-            # torch.nn.Dropout(p=0.5),
-            # torch.nn.Linear(self.hidden_dim * int(self.number_of_columns)
-            #                 , self.hidden_dim),
-            # torch.nn.ReLU(),
-            # torch.nn.LayerNorm(self.hidden_dim),
-            # torch.nn.Dropout(p=0.5),
-            torch.nn.Linear(self.hidden_dim, self.cat_cols + 1)
+            torch.nn.Dropout(p=0.3),
+            torch.nn.Linear(self.hidden_dim, self.label_cols + 1 )
         )
         
     def forward(self, input_data, epoch = -1):
