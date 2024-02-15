@@ -218,9 +218,11 @@ class K_graph_MultiLayers(torch.nn.Module):
         #       int(self.number_of_columns*0.5),
         #       int(self.number_of_columns*0.25),
         #       int(self.number_of_columns*0.125))
-        self.K_graph_layer_1 = K_graph_Layer(int(self.number_of_columns)    , int(self.number_of_columns*0.5), self.hidden_dim)
-        self.K_graph_layer_2 = K_graph_Layer(int(self.number_of_columns*0.5), int(self.number_of_columns*0.25), self.hidden_dim)
-        self.K_graph_layer_3 = K_graph_Layer(int(self.number_of_columns*0.25), int(self.number_of_columns*0.125), self.hidden_dim)
+        self.K_graph_layer_1 = K_graph_Layer(int(self.number_of_columns)    , int(self.number_of_columns*0.9), self.hidden_dim)
+        self.K_graph_layer_2 = K_graph_Layer(int(self.number_of_columns*0.9), int(self.number_of_columns*0.7), self.hidden_dim)
+        self.K_graph_layer_3 = K_graph_Layer(int(self.number_of_columns*0.7), int(self.number_of_columns*0.5), self.hidden_dim)
+        self.K_graph_layer_4 = K_graph_Layer(int(self.number_of_columns*0.5), int(self.number_of_columns*0.3), self.hidden_dim)
+        self.K_graph_layer_5 = K_graph_Layer(int(self.number_of_columns*0.3), int(self.number_of_columns*0.1), self.hidden_dim)
         
         # prediction layers
         # self.prediction_1 = torch.nn.Sequential(
@@ -245,9 +247,11 @@ class K_graph_MultiLayers(torch.nn.Module):
         self.prediction_CAT = torch.nn.Sequential(
             torch.nn.Linear(self.hidden_dim *(  
                                                 int(self.number_of_columns) + 
+                                                int(self.number_of_columns*0.9) +
+                                                int(self.number_of_columns*0.7) +
                                                 int(self.number_of_columns*0.5) +
-                                                int(self.number_of_columns*0.25) +
-                                                int(self.number_of_columns*0.125)
+                                                int(self.number_of_columns*0.3) +
+                                                int(self.number_of_columns*0.1)
                                               ),
                             self.hidden_dim * 1),
             torch.nn.ReLU(),
@@ -265,6 +269,8 @@ class K_graph_MultiLayers(torch.nn.Module):
         feature_embedding_1 = self.K_graph_layer_1(feature_embedding, epoch)    # [batch_size, C, hidden_dim]
         feature_embedding_2 = self.K_graph_layer_2(feature_embedding_1, epoch)  # [batch_size, C', hidden_dim]
         feature_embedding_3 = self.K_graph_layer_3(feature_embedding_2, epoch)  # [batch_size, C'', hidden_dim]
+        feature_embedding_4 = self.K_graph_layer_4(feature_embedding_3, epoch)  # [batch_size, C'', hidden_dim]
+        feature_embedding_5 = self.K_graph_layer_5(feature_embedding_4, epoch)  # [batch_size, C'', hidden_dim]
         
         # make prediction
         # prediction_1 = self.prediction_1(feature_embedding_1.reshape(len(input_data), -1))
@@ -275,7 +281,10 @@ class K_graph_MultiLayers(torch.nn.Module):
                                                         feature_embedding.reshape(len(input_data), -1),
                                                         feature_embedding_1.reshape(len(input_data), -1),
                                                         feature_embedding_2.reshape(len(input_data), -1),
-                                                        feature_embedding_3.reshape(len(input_data), -1)], dim=1))
+                                                        feature_embedding_3.reshape(len(input_data), -1),
+                                                        feature_embedding_4.reshape(len(input_data), -1),
+                                                        feature_embedding_5.reshape(len(input_data), -1)
+                                                        ], dim=1))
         
         # prediction = torch.mean(torch.stack([prediction_1, prediction_2, prediction_3]), dim=0)
         # prediction = torch.mean(torch.stack([prediction_1, prediction_2]), dim=0)
