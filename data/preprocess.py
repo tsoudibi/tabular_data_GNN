@@ -4,6 +4,16 @@ from utils import *
 
 DEVICE = utils.get_device()
 
+def get_colunm_info() -> (list, list, str, list):
+    RAW_data = pd.read_csv(utils.get_dataset_path())
+    NUM, CAT, LABEL = utils.get_dataset_attributes()
+    if len(CAT) == 0:
+        cat_num = []
+    elif len(CAT) == 1:
+        cat_num = [RAW_data[CAT[0]].nunique()]
+    else:
+        cat_num = [len(RAW_data[col].unique()) for col in CAT]
+    return NUM, CAT, LABEL, cat_num
 
 def get_data() -> (torch.tensor, torch.tensor, (list, list, str, list)):
 

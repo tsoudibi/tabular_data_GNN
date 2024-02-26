@@ -1,6 +1,6 @@
 from trainer import *
 
-update_run_config('num_learner', 8)
+# update_run_config('num_learner', 8)
 
 # credit
 update_run_config('dataset', 'credit')
