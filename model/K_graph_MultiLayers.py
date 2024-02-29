@@ -185,26 +185,32 @@ class K_graph_Layer(torch.nn.Module):
 
             # construct graph
             edge_index = weighted_adj.nonzero().T  # [2, num_edges]
-            edge_wight = weighted_adj[edge_index[0], edge_index[1]] # [num_edges]
-            edge_wight = torch.softmax(edge_wight, dim=0)
+            edge_weight = weighted_adj[edge_index[0], edge_index[1]] # [num_edges]
+            # normalize to 0~1
+            if len(edge_weight) > 0:
+                edge_weight = (edge_weight - edge_weight.min()) / (edge_weight.max() - edge_weight.min() + 1e-9)
+                # threshold 
+                # edge_weight = torch.where(edge_weight > 0.5, edge_weight, torch.zeros_like(edge_weight, device=DEVICE))
+            # print(edge_weight.shape, edge_weight)
+            # print('max',max(edge_weight), 'min',min(edge_weight), 'mean',edge_weight.mean())
 
             del weighted_adj, importance_topK_current
             
             # if True and epoch % 10 == 0:
-            #     print('in graph', target_col, 'nodes:', len(indices), 'edges:', len(edge_wight),'ratio', len(edge_wight)/(len(indices)**2+0.000001))
+            #     print('in graph', target_col, 'nodes:', len(indices), 'edges:', len(edge_weight),'ratio', len(edge_weight)/(len(indices)**2+0.000001))
             
             
             # features = (feature_embedding[indices]) # [????, cols*hidden_dim]
             features = (feature_embedding.reshape(len(input_embedding),self.C_input,-1)[indices][:,target_col,:]) # [????, hidden_dim]
 
             # construct graph 
-            data = Data(x=features, edge_index=edge_index, edge_weight=edge_wight) 
-            del features, edge_index, edge_wight
+            data = Data(x=features, edge_index=edge_index, edge_weight=edge_weight) 
+            del features, edge_index, edge_weight
             torch.cuda.empty_cache()
             
             # apply GCN
-            # x = self.GNNs[target_col](data.x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
-            x = self.GNNs[target_col](data.x, data.edge_index)  # [???, hidden_dim]
+            x = self.GNNs[target_col](data.x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
+            # x = self.GNNs[target_col](data.x, data.edge_index)  # [???, hidden_dim]
             # x = self.conv_1_input(data.x, data.edge_index)  # [???, hidden_dim]
             x = torch.relu(x)
             x = torch.layer_norm(x, x.shape) # [???, hidden_dim]
