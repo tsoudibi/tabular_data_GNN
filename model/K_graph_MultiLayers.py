@@ -125,7 +125,9 @@ class K_graph_Layer(torch.nn.Module):
         )  for i in range(self.num_learner)]).to(DEVICE)
         
         # graph convolution layers
-        self.GNNs = torch.nn.ModuleList([torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim) for i in range(self.C_input)]).to(DEVICE)
+        # self.GNNs = torch.nn.ModuleList([torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim) for i in range(self.C_input)]).to(DEVICE)
+        self.SAGEs = torch.nn.ModuleList([torch_geometric.nn.SAGEConv(self.hidden_dim, self.hidden_dim) for i in range(self.C_input)]).to(DEVICE)
+        # self.GATs = torch.nn.ModuleList([torch_geometric.nn.GATv2Conv(self.hidden_dim, self.hidden_dim) for i in range(self.C_input)]).to(DEVICE)
         # self.conv_GCN_input = torch_geometric.nn.GCNConv(self.hidden_dim, self.hidden_dim)
         
         # batch norm
@@ -187,8 +189,8 @@ class K_graph_Layer(torch.nn.Module):
             edge_index = weighted_adj.nonzero().T  # [2, num_edges]
             edge_weight = weighted_adj[edge_index[0], edge_index[1]] # [num_edges]
             # normalize to 0~1
-            if len(edge_weight) > 0:
-                edge_weight = (edge_weight - edge_weight.min()) / (edge_weight.max() - edge_weight.min() + 1e-9)
+            # if len(edge_weight) > 0:
+                # edge_weight = (edge_weight - edge_weight.min()) / (edge_weight.max() - edge_weight.min() + 1e-9)
                 # threshold 
                 # edge_weight = torch.where(edge_weight > 0.5, edge_weight, torch.zeros_like(edge_weight, device=DEVICE))
             # print(edge_weight.shape, edge_weight)
@@ -209,9 +211,10 @@ class K_graph_Layer(torch.nn.Module):
             torch.cuda.empty_cache()
             
             # apply GCN
-            x = self.GNNs[target_col](data.x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
+            # x = self.GNNs[target_col](data.x, data.edge_index, data.edge_weight)  # [???, hidden_dim]
             # x = self.GNNs[target_col](data.x, data.edge_index)  # [???, hidden_dim]
-            # x = self.conv_1_input(data.x, data.edge_index)  # [???, hidden_dim]
+            x = self.SAGEs[target_col](data.x, data.edge_index)  # [???, hidden_dim]
+            # x = self.GATs[target_col](data.x, data.edge_index)  # [???, hidden_dim]
             x = torch.relu(x)
             x = torch.layer_norm(x, x.shape) # [???, hidden_dim]
             # x = self.batch_norm_GNN(x)
@@ -258,41 +261,10 @@ class K_graph_MultiLayers(torch.nn.Module):
         # feature embedding
         self.feature_embedding_learner = feature_embedding(NUM, CAT, LABEL, cat_num)
         
-        # K_graph layers
-        # print(int(self.number_of_columns),
-        #       int(self.number_of_columns*0.5),
-        #       int(self.number_of_columns*0.25),
-        #       int(self.number_of_columns*0.125))
-        
         self.K_graph_layers = []
         for layer_index in range(self.pyr_layer.total_layers):
             self.K_graph_layers.append(K_graph_Layer(self.pyr_layer.IO_of_each_layer[layer_index][0], self.pyr_layer.IO_of_each_layer[layer_index][1], self.hidden_dim))
-        
-        # self.K_graph_layer_1 = K_graph_Layer(int(self.number_of_columns)    , int(self.number_of_columns*0.9), self.hidden_dim)
-        # self.K_graph_layer_2 = K_graph_Layer(int(self.number_of_columns*0.9), int(self.number_of_columns*0.7), self.hidden_dim)
-        # self.K_graph_layer_3 = K_graph_Layer(int(self.number_of_columns*0.7), int(self.number_of_columns*0.5), self.hidden_dim)
-        # self.K_graph_layer_4 = K_graph_Layer(int(self.number_of_columns*0.5), int(self.number_of_columns*0.3), self.hidden_dim)
-        # self.K_graph_layer_5 = K_graph_Layer(int(self.number_of_columns*0.3), int(self.number_of_columns*0.1), self.hidden_dim)
-        
-        # prediction layers
-        # self.prediction_1 = torch.nn.Sequential(
-        #     torch.nn.Linear(self.hidden_dim *(int(self.number_of_columns*0.5)), self.hidden_dim),
-        #     torch.nn.ReLU(),
-        #     torch.nn.LayerNorm(self.hidden_dim),
-        #     torch.nn.Linear(self.hidden_dim, self.label_cols + 1)
-        # )
-        # self.prediction_2 = torch.nn.Sequential(
-        #     torch.nn.Linear(self.hidden_dim *(int(self.number_of_columns*0.25)), self.hidden_dim),
-        #     torch.nn.ReLU(),
-        #     torch.nn.LayerNorm(self.hidden_dim),
-        #     torch.nn.Linear(self.hidden_dim, self.label_cols + 1)
-        # )
-        # self.prediction_3 = torch.nn.Sequential(
-        #     torch.nn.Linear(self.hidden_dim *(int(self.number_of_columns*0.125)), self.hidden_dim),
-        #     torch.nn.ReLU(),
-        #     torch.nn.LayerNorm(self.hidden_dim),
-        #     torch.nn.Linear(self.hidden_dim, self.label_cols + 1)
-        # )
+   
         self.prediction_CAT = torch.nn.Sequential(
             torch.nn.Linear(self.hidden_dim *(  
                                                 int(self.number_of_columns) + 
@@ -316,31 +288,10 @@ class K_graph_MultiLayers(torch.nn.Module):
         for layer_index in range(self.pyr_layer.total_layers):
             feature_embeddings.append(self.K_graph_layers[layer_index](feature_embeddings[layer_index], epoch)) # [batch_size, C', hidden_dim]
         
-        # layers
-        # feature_embedding_1 = self.K_graph_layer_1(feature_embedding, epoch)    # [batch_size, C, hidden_dim]
-        # feature_embedding_2 = self.K_graph_layer_2(feature_embedding_1, epoch)  # [batch_size, C', hidden_dim]
-        # feature_embedding_3 = self.K_graph_layer_3(feature_embedding_2, epoch)  # [batch_size, C'', hidden_dim]
-        # feature_embedding_4 = self.K_graph_layer_4(feature_embedding_3, epoch)  # [batch_size, C''', hidden_dim]
-        # feature_embedding_5 = self.K_graph_layer_5(feature_embedding_4, epoch)  # [batch_size, C''', hidden_dim]
-        
+ 
         # prediction
         for i in range(len(feature_embeddings)):
             feature_embeddings[i] = feature_embeddings[i].reshape(len(input_data), -1)
         prediction_CAT = self.prediction_CAT(torch.cat(feature_embeddings, dim=1))
         
-        # prediction_CAT = self.prediction_CAT(torch.cat([
-        #                                                 feature_embedding.reshape(len(input_data), -1),
-        #                                                 feature_embedding_1.reshape(len(input_data), -1),
-        #                                                 feature_embedding_2.reshape(len(input_data), -1),
-        #                                                 feature_embedding_3.reshape(len(input_data), -1),
-        #                                                 feature_embedding_4.reshape(len(input_data), -1),
-        #                                                 feature_embedding_5.reshape(len(input_data), -1)
-        #                                                 ], dim=1))
-        
-        # prediction = torch.mean(torch.stack([prediction_1, prediction_2, prediction_3]), dim=0)
-        # prediction = torch.mean(torch.stack([prediction_1, prediction_2]), dim=0)
-        
-        
-        
-        # return prediction
         return prediction_CAT

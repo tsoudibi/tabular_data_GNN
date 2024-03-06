@@ -14,8 +14,11 @@ run_config:
   random_state: 42
   early_stop_patience: 200
   num_layers: 5
-  layers_prop: [0.9, 0.7, 0.5, 0.3, 0.1]
+  # layers_prop: [0.3]
+  # layers_prop: [0.7, 0.3]
   # layers_prop: [0.7, 0.5, 0.3]
+  # layers_prop: [0.9, 0.7, 0.3, 0.1]
+  layers_prop: [0.9, 0.7, 0.5, 0.3, 0.1]
 wandb_config:
   use_wandb: True    
   entity: a220284268
@@ -25,9 +28,9 @@ wandb_config:
   name : 3_fold with early stop
   # group: K_graph_Multi_noGraph 
   # group:  KG_multi ES ALL_feat 1
-  group: KGML L=5 with edge weight
+  group: KGML L=5 GraphSAGE
   # group: MLP baseline
-  notes: V5 small loss 7 5 3 res cat predict:MLP dropout b512 BN selfloop no EGW
+  notes: V5 no EGW 
 
 # available datasets:
 # adult
